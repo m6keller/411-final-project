@@ -12,6 +12,9 @@ Operational_time = Literal[9, 10, 11, 12, 13, 14, 15, 16]
 # Priority levels for surgeries 0 (optional) and 1 (mandatory)
 Priority = Literal[0, 1]
 
+# Operating Rooms available
+Operating_Room = Literal["OR_1", "OR_2", "OR_3"]
+
 class Surgery:
     def __init__(
             self, 
@@ -32,7 +35,7 @@ class Surgery:
         self.priority = priority
 
     def __repr__(self):
-        return f"Surgery(id={self.id}, duration={self.duration}, priority={self.priority})"
+        return f"Surgery(id={self.id}, surgeon={self.surgeon}, duration={self.duration}, priority={self.priority})"
 
 class Schedule:
     def __init__(
@@ -40,9 +43,9 @@ class Schedule:
         schedule_id: str,
         B_j: int,
         day: Day,
-        surgeries: List[Surgery],
+        surgeries: List[int],
         surgeon_work: Dict[Surgeon, int],
-        surgeon_busy_times: Dict[Tuple[Surgeon, Day, int], int]
+        surgeon_busy_times: Dict[Tuple[Surgeon, Day, int, Operating_Room], int]
     ):
         # Unique identifier for the schedule 
         self.id = schedule_id
