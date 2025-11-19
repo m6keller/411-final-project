@@ -13,7 +13,7 @@ def generate_surgery_data(num_samples, num_days_planning_horizon=5, num_surgeons
         infection_type = random.choice([0, 0, 0, 1, 2]) # Skew towards non-infectious
         
         surgery = Surgery(
-            surgery_id=i,
+            id=i,
             surgeon=surgeon,
             duration=duration,
             priority=priority,
