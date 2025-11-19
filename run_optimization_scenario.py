@@ -71,81 +71,107 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
     return prob
 
 def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, DAY_MAP, 
-                          SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES):
+                          SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES, all_surgeons):
     """
-    Creates one simple, guaranteed-feasible schedule for each mandatory surgery
-    to ensure the initial Master LP is feasible. Each surgery gets its own unique (day, OR) slot.
+    Creates a set of mutually feasible initial schedules for mandatory surgeries
+    using a greedy heuristic to avoid surgeon and OR conflicts.
     """
     initial_schedules = []
-    
     if not mandatory_surgeries:
-        return [] 
-    
+        return []
+
     day_duration = ALL_TIMES[-1] + 1
     
-    # Create a pool of all available (day, OR_index) slots
-    available_or_slots = []
-    for day_name in all_days:
-        for or_idx in range(K_d[day_name]):
-            available_or_slots.append((day_name, or_idx))
-    
-    # Shuffle the slots to distribute surgeries more evenly initially
-    random.shuffle(available_or_slots)
+    # Track resource usage for the initial heuristic
+    # surgeon_availability: (surgeon, day) -> list of (start, end) busy intervals
+    surgeon_availability = {(s, d): [] for s in all_surgeons for d in all_days}
+    # or_usage: day -> count of ORs used
+    or_usage = {d: 0 for d in all_days}
 
-    # Keep track of used slots
-    used_or_slots = set()
-
+    # Create a schedule for each mandatory surgery
     for surg_id in mandatory_surgeries:
         surg_data = all_surgeries_data[surg_id]
         surg_name = surg_data["surgeon"]
         duration = surg_data["duration"]
         surg_deadline_day = surg_data["deadline"]
         
-        assigned_day = None
-        assigned_or_idx = None
-
-        # Find the first available (day, OR_index) slot that satisfies the deadline
-        for day_name, or_idx in available_or_slots:
-            if (day_name, or_idx) in used_or_slots:
-                continue
-
+        found_slot = False
+        
+        # Try to find a slot for this surgery
+        for day_name in all_days:
             day_num = DAY_MAP[day_name]
-            if day_num <= surg_deadline_day:
-                assigned_day = day_name
-                assigned_or_idx = or_idx
-                used_or_slots.add((day_name, or_idx))
-                break
-        
-        if assigned_day is None:
-            print(f"ERROR: Could not find a suitable unique (day, OR) slot for mandatory surgery {surg_id} within its deadline. Initial LP will be infeasible.")
-            # As a last resort, assign to a dummy slot to allow the code to run,
-            # but this will likely lead to an infeasible Master LP.
-            assigned_day = all_days[0]
-            assigned_or_idx = 0 # This might cause conflicts, but allows execution
+            if day_num > surg_deadline_day:
+                continue # Past deadline
+
+            # Check for a free OR on this day
+            if or_usage[day_name] >= K_d[day_name]:
+                continue # No ORs left on this day
+
+            # Try to find a time slot for the surgeon
+            # Iterate through possible start times (e.g., every 30 mins)
+            for start_time in range(0, day_duration - duration + 1, 30):
+                finish_time = start_time + duration
+                
+                # Check if surgeon's daily max time is exceeded
+                current_work = sum(end - start for start, end in surgeon_availability[(surg_name, day_name)])
+                if current_work + duration > A_ld[(surg_name, day_name)]:
+                    break # Surgeon has no more time on this day, try next day
+
+                # Check for overlap with surgeon's existing schedule on this day
+                is_overlap = False
+                for busy_start, busy_end in surgeon_availability[(surg_name, day_name)]:
+                    if max(start_time, busy_start) < min(finish_time, busy_end):
+                        is_overlap = True
+                        break
+                
+                if not is_overlap:
+                    # Found a valid slot
+                    found_slot = True
+                    
+                    # --- Create and add the new schedule ---
+                    busy_times = {}
+                    for t_busy in SIMPLIFIED_TIMES:
+                        if start_time <= t_busy < finish_time:
+                            busy_times[(surg_name, day_name, t_busy)] = 1
+                    
+                    schedule = Schedule(
+                        schedule_id=f"Initial_Sched_{surg_id}",
+                        B_j=duration,
+                        day=day_name,
+                        surgeries=[surg_id],
+                        surgeon_work={surg_name: duration},
+                        surgeon_busy_times=busy_times
+                    )
+                    initial_schedules.append(schedule)
+                    
+                    # --- Update resource usage ---
+                    surgeon_availability[(surg_name, day_name)].append((start_time, finish_time))
+                    or_usage[day_name] += 1
+                    
+                    break # Move to the next surgery
             
-        start_time = 0 # Assign a fixed start time for simplicity in initial schedules
-        finish_time = start_time + duration
+            if found_slot:
+                break # Move to the next surgery
 
-        # Basic checks (warnings if violated, but still create schedule)
-        if duration > A_ld[(surg_name, assigned_day)]:
-            print(f"WARNING: Mandatory surgery {surg_id} duration ({duration} min) exceeds surgeon {surg_name}'s daily max ({A_ld[(surg_name, assigned_day)]} min) on {assigned_day}. This initial schedule might be infeasible.")
-        if finish_time > day_duration:
-            print(f"WARNING: Mandatory surgery {surg_id} duration ({duration} min) exceeds day duration ({day_duration} min) on {assigned_day}. This initial schedule might be infeasible.")
+        if not found_slot:
+            print(f"WARNING: Heuristic could not find a feasible slot for mandatory surgery {surg_id}. Creating a conflicting dummy schedule on Day 1.")
+            # Create a dummy schedule on Day 1 at time 0. This is likely to cause
+            # infeasibility in the Master LP, but ensures the column exists.
+            day_name = all_days[0]
+            start_time = 0
+            finish_time = start_time + duration
+            
+            busy_times = {}
+            for t_busy in SIMPLIFIED_TIMES:
+                if start_time <= t_busy < finish_time:
+                    busy_times[(surg_name, day_name, t_busy)] = 1
 
-        busy_times = {}
-        for t_busy in SIMPLIFIED_TIMES:
-            if start_time <= t_busy < finish_time:
-                busy_times[(surg_name, assigned_day, t_busy)] = 1
-        
-        schedule = Schedule(
-            schedule_id=f"Initial_Sched_{surg_id}_{assigned_day}_OR{assigned_or_idx}", 
-            B_j=duration, 
-            day=assigned_day, 
-            surgeries=[surg_id],
-            surgeon_work={surg_name: duration},
-            surgeon_busy_times=busy_times
-        )
-        initial_schedules.append(schedule)
+            schedule = Schedule(
+                schedule_id=f"Initial_Sched_{surg_id}_DUMMY",
+                B_j=duration, day=day_name, surgeries=[surg_id],
+                surgeon_work={surg_name: duration}, surgeon_busy_times=busy_times
+            )
+            initial_schedules.append(schedule)
 
     return initial_schedules
 
@@ -212,7 +238,7 @@ def run_optimization_scenario(
 
     known_schedules = get_initial_schedules(
         all_surgeries_data, mandatory_surgeries, all_days, DAY_MAP, 
-        SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES
+        SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES, all_surgeons
     )
     
     results["total_columns_generated"] = len(known_schedules)
@@ -332,10 +358,12 @@ def print_results_report(results):
 
 if __name__ == "__main__":
     
+    random.seed(42) # Set seed for reproducible results
+
     # --- Configuration ---
     NUM_SURGERIES = 10
-    NUM_SURGEONS = 4
-    NUM_DAYS = 5
+    NUM_SURGEONS = 5
+    NUM_DAYS = 10
     
     # --- Constants ---
     OBLIGATORY_CLEANING_TIME = 30
@@ -356,7 +384,7 @@ if __name__ == "__main__":
     optional_surgeries = []
     
     # Use surgery_generation script and convert to dict
-    generated_surgeries = generate_surgery_data(NUM_SURGERIES, NUM_DAYS)
+    generated_surgeries = generate_surgery_data(NUM_SURGERIES, NUM_DAYS, NUM_SURGEONS)
     for surg in generated_surgeries:
         surg_id = surg.id
 
