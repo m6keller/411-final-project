@@ -21,7 +21,9 @@ class Surgery:
             surgery_id: int, 
             surgeon: Surgeon,
             duration: int,
-            priority: Priority):
+            priority: Priority,
+            deadline: int,
+            infection_type: int):
         # Unique identifier for the surgery
         self.id = surgery_id
 
@@ -33,9 +35,16 @@ class Surgery:
 
         # Priority level of the surgery 
         self.priority = priority
+        
+        # Day by which surgery must be completed
+        self.deadline = deadline
+
+        # Type of infection (0 for none)
+        self.infection_type = infection_type
 
     def __repr__(self):
-        return f"Surgery(id={self.id}, surgeon={self.surgeon}, duration={self.duration}, priority={self.priority})"
+        return (f"Surgery(id={self.id}, surgeon={self.surgeon}, duration={self.duration}, "
+                f"priority={self.priority}, deadline={self.deadline}, infection_type={self.infection_type})")
 
 class Schedule:
     def __init__(
@@ -45,7 +54,7 @@ class Schedule:
         day: Day,
         surgeries: List[int],
         surgeon_work: Dict[Surgeon, int],
-        surgeon_busy_times: Dict[Tuple[Surgeon, Day, int, Operating_Room], int]
+        surgeon_busy_times: Dict[Tuple[Surgeon, Day, int], int]
     ):
         # Unique identifier for the schedule 
         self.id = schedule_id
@@ -70,18 +79,18 @@ class Schedule:
         self.surgeon_busy_times = surgeon_busy_times
 
     def __repr__(self):
-        return f"Schedule(id={self.id}, day={self.day})"
+        return f"Schedule(id={self.id}, day={self.day}, surgeries={self.surgeries})"
 
 # Example usage:
 if __name__ == "__main__":  
-    surgery1 = Surgery(surgery_id=1, surgeon="Dr_A", duration=120, priority=1)
-    surgery2 = Surgery(surgery_id=2, surgeon="Dr_B", duration=90, priority=0)
+    surgery1 = Surgery(surgery_id=1, surgeon="Dr_A", duration=120, priority=1, deadline=1, infection_type=0)
+    surgery2 = Surgery(surgery_id=2, surgeon="Dr_B", duration=90, priority=0, deadline=2, infection_type=1)
 
     schedule = Schedule(
         schedule_id="sched_001",
         B_j=210,
         day="Mon",
-        surgeries=[surgery1, surgery2],
+        surgeries=[surgery1.id, surgery2.id],
         surgeon_work={"Dr_A": 120, "Dr_B": 90},
         surgeon_busy_times={("Dr_A", "Mon", 9): 1, ("Dr_B", "Mon", 11): 1}
     )
