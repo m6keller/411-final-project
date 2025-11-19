@@ -70,109 +70,133 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                 
     return prob
 
-def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, DAY_MAP, 
-                          SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES, all_surgeons):
+def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, 
+                            K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME):
     """
-    Creates a set of mutually feasible initial schedules for mandatory surgeries
-    using a greedy heuristic to avoid surgeon and OR conflicts.
+    Constructive Heuristic (Parallel/Bin Packing):
+    Prioritizes opening new ORs (Parallelism) before stacking surgeries (Serialization).
+    Now accounts for OBLIGATORY CLEANING TIME between cases.
     """
-    initial_schedules = []
-    if not mandatory_surgeries:
-        return []
-
-    day_duration = ALL_TIMES[-1] + 1
+    print("  Generating Initial Heuristic Schedules (Prioritizing Parallelism)...")
     
-    # Track resource usage for the initial heuristic
-    # surgeon_availability: (surgeon, day) -> list of (start, end) busy intervals
+    # 1. Sort Surgeries: Longest duration first
+    sorted_surgeries = []
+    for s_id in mandatory_surgeries:
+        surg_obj = all_surgeries_data[s_id]["surgery_object"]
+        sorted_surgeries.append(surg_obj)
+    
+    sorted_surgeries.sort(key=lambda s: s.duration, reverse=True)
+
+    # 2. Trackers
+    rooms_registry = {day: [] for day in all_days}
     surgeon_availability = {(s, d): [] for s in all_surgeons for d in all_days}
-    # or_usage: day -> count of ORs used
-    or_usage = {d: 0 for d in all_days}
+    surgeon_daily_work = {(s, d): 0 for s in all_surgeons for d in all_days}
 
-    # Create a schedule for each mandatory surgery
-    for surg_id in mandatory_surgeries:
-        surg_data = all_surgeries_data[surg_id]
-        surg_name = surg_data["surgeon"]
-        duration = surg_data["duration"]
-        surg_deadline_day = surg_data["deadline"]
+    initial_schedules = []
+
+    for surg in sorted_surgeries:
+        is_scheduled = False
         
-        found_slot = False
-        
-        # Try to find a slot for this surgery
-        for day_name in all_days:
-            day_num = DAY_MAP[day_name]
-            if day_num > surg_deadline_day:
-                continue # Past deadline
+        for day in all_days:
+            if is_scheduled: break
+            
+            existing_rooms = rooms_registry[day]
+            current_surgeon_work = surgeon_daily_work[(surg.surgeon, day)]
 
-            # Check for a free OR on this day
-            if or_usage[day_name] >= K_d[day_name]:
-                continue # No ORs left on this day
-
-            # Try to find a time slot for the surgeon
-            # Iterate through possible start times (e.g., every 30 mins)
-            for start_time in range(0, day_duration - duration + 1, 30):
-                finish_time = start_time + duration
+            # STRATEGY A: Try to Open a NEW Room (Prioritize Parallelism)
+            # No cleaning needed for the first surgery of the day
+            if len(existing_rooms) < K_d[day]:
+                start_time = 0
+                end_time = surg.duration
                 
-                # Check if surgeon's daily max time is exceeded
-                current_work = sum(end - start for start, end in surgeon_availability[(surg_name, day_name)])
-                if current_work + duration > A_ld[(surg_name, day_name)]:
-                    break # Surgeon has no more time on this day, try next day
-
-                # Check for overlap with surgeon's existing schedule on this day
-                is_overlap = False
-                for busy_start, busy_end in surgeon_availability[(surg_name, day_name)]:
-                    if max(start_time, busy_start) < min(finish_time, busy_end):
-                        is_overlap = True
+                # Check Constraints
+                overlap = False
+                for (busy_start, busy_end) in surgeon_availability[(surg.surgeon, day)]:
+                     if max(start_time, busy_start) < min(end_time, busy_end):
+                        overlap = True
                         break
                 
-                if not is_overlap:
-                    # Found a valid slot
-                    found_slot = True
-                    
-                    # --- Create and add the new schedule ---
-                    busy_times = {}
-                    for t_busy in SIMPLIFIED_TIMES:
-                        if start_time <= t_busy < finish_time:
-                            busy_times[(surg_name, day_name, t_busy)] = 1
-                    
-                    schedule = Schedule(
-                        id=f"Initial_Sched_{surg_id}",
-                        B_j=duration,
-                        day=day_name,
-                        surgeries=[surg_id],
-                        surgeries_data=[surg_data["surgery_object"]],
-                        surgeon_work={surg_name: duration},
-                        surgeon_busy_times=busy_times
-                    )
-                    initial_schedules.append(schedule)
-                    
-                    # --- Update resource usage ---
-                    surgeon_availability[(surg_name, day_name)].append((start_time, finish_time))
-                    or_usage[day_name] += 1
-                    
-                    break # Move to the next surgery
-            
-            if found_slot:
-                break # Move to the next surgery
+                valid_work = (current_surgeon_work + surg.duration <= A_ld[(surg.surgeon, day)])
 
-        if not found_slot:
-            print(f"WARNING: Heuristic could not find a feasible slot for mandatory surgery {surg_id}. Creating a conflicting dummy schedule on Day 1.")
-            # Create a dummy schedule on Day 1 at time 0. This is likely to cause
-            # infeasibility in the Master LP, but ensures the column exists.
-            day_name = all_days[0]
-            start_time = 0
-            finish_time = start_time + duration
-            
-            busy_times = {}
-            for t_busy in SIMPLIFIED_TIMES:
-                if start_time <= t_busy < finish_time:
-                    busy_times[(surg_name, day_name, t_busy)] = 1
+                if not overlap and valid_work:
+                    new_room = {
+                        'end_time': end_time,
+                        'surgeries': [surg.id],
+                        'surgeries_data': [surg],
+                        'work_log': {surg.surgeon: surg.duration},
+                        'busy_log': {(surg.surgeon, start_time): surg.duration},
+                        'start_times': {surg.id: start_time}
+                    }
+                    rooms_registry[day].append(new_room)
+                    surgeon_availability[(surg.surgeon, day)].append((start_time, end_time))
+                    surgeon_daily_work[(surg.surgeon, day)] += surg.duration
+                    is_scheduled = True
+                    break
 
-            schedule = Schedule(
-                id=f"Initial_Sched_{surg_id}_DUMMY",
-                B_j=duration, day=day_name, surgeries=[surg_id],
-                surgeon_work={surg_name: duration}, surgeon_busy_times=busy_times, surgeries_data=[surg_data["surgery_object"]]
+            # STRATEGY B: Try to Pack into an EXISTING Room (Backfilling)
+            if not is_scheduled:
+                for room in existing_rooms:
+                    # --- NEW LOGIC: Calculate Cleaning Time ---
+                    last_surg = room['surgeries_data'][-1]
+                    cleaning_time = 0
+                    
+                    # Check cleaning rules [cite: 95-96]
+                    # 1. Infectious -> Non-Infectious
+                    if last_surg.infection_type > 0 and surg.infection_type == 0:
+                        cleaning_time = OBLIGATORY_CLEANING_TIME
+                    # 2. Infectious A -> Infectious B (Different types)
+                    elif (last_surg.infection_type > 0 and surg.infection_type > 0 
+                          and last_surg.infection_type != surg.infection_type):
+                        cleaning_time = OBLIGATORY_CLEANING_TIME
+                    
+                    # Start time is end of previous + cleaning
+                    start_time = room['end_time'] + cleaning_time
+                    end_time = start_time + surg.duration
+                    
+                    # --- Standard Constraints ---
+                    if end_time > 480: continue
+                    if current_surgeon_work + surg.duration > A_ld[(surg.surgeon, day)]: continue
+
+                    overlap = False
+                    for (busy_start, busy_end) in surgeon_availability[(surg.surgeon, day)]:
+                        if max(start_time, busy_start) < min(end_time, busy_end):
+                            overlap = True
+                            break
+                    if overlap: continue
+                    
+                    # Add to Room
+                    room['surgeries'].append(surg.id)
+                    room['surgeries_data'].append(surg)
+                    room['end_time'] = end_time
+                    room['work_log'][surg.surgeon] = room['work_log'].get(surg.surgeon, 0) + surg.duration
+                    room['busy_log'][(surg.surgeon, start_time)] = surg.duration
+                    room['start_times'][surg.id] = start_time
+                    
+                    surgeon_availability[(surg.surgeon, day)].append((start_time, end_time))
+                    surgeon_daily_work[(surg.surgeon, day)] += surg.duration
+                    is_scheduled = True
+                    break
+
+        if not is_scheduled:
+            print(f"WARNING: Could not schedule mandatory surgery {surg.id} in heuristic.")
+
+    # 3. Convert to Objects
+    for day, rooms in rooms_registry.items():
+        for i, room in enumerate(rooms):
+            # B_j is total SURGERY duration (profit), excluding cleaning/idle time [cite: 179-180]
+            total_surgery_duration = sum(room['work_log'].values())
+            
+            sched_obj = Schedule(
+                id=f"Init_{day}_Room{i+1}",
+                B_j=total_surgery_duration,
+                day=day,
+                surgeries=room['surgeries'],
+                surgeries_data=room['surgeries_data'],
+                surgeon_work=room['work_log'],
+                surgeon_busy_times=room['busy_log'],
+                start_times=room['start_times']
             )
-            initial_schedules.append(schedule)
+            initial_schedules.append(sched_obj)
 
     return initial_schedules
 
@@ -238,14 +262,14 @@ def run_optimization_scenario(
     }
 
     known_schedules = get_initial_schedules(
-        all_surgeries_data, mandatory_surgeries, all_days, DAY_MAP, 
-        SIMPLIFIED_TIMES, K_d, A_ld, OBLIGATORY_CLEANING_TIME, ALL_TIMES, all_surgeons
+        all_surgeries_data, mandatory_surgeries, all_days, 
+        K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME
     )
     
     results["total_columns_generated"] = len(known_schedules)
     
     iteration = 0
-    max_iterations = 15 
+    max_iterations = 10
     
     while True:
         iteration += 1
@@ -318,43 +342,100 @@ def run_optimization_scenario(
 
 def print_results_report(results):
     """
-    Prints a clear report from a single scenario result.
+    Prints a detailed, debug-friendly report of the optimization results.
+    Includes INFECTION, DEADLINE, and STATUS (Mandatory vs Optional).
     """
-    print("\n\n" + "="*80)
-    print(" " * 28 + "OPTIMIZATION RUN REPORT")
-    print("="*80 + "\n")
-    
-    print(f"{'SCENARIO':<15} | {'STATUS':<26} | {'TIME (s)':<8} | {'CG ITERS':<8} | {'COLUMNS':<7} | {'TOTAL MINS':<10}")
-    print("-"*80)
-    res = results
-    print(f"{res['scenario_name']:<15} | {res['status']:<26} | {res['runtime_sec']:<8.2f} | {res['total_iterations']:<8} | {res['total_columns_generated']:<7} | {res['total_scheduled_time']:<10.0f}")
-        
-    print("\n" + "="*80)
-    print(" " * 30 + "DETAILED OPTIMAL OUTPUT")
-    print("="*80 + "\n")
+    def fmt_time(minutes_from_start):
+        start_hour = 9
+        h = start_hour + int(minutes_from_start // 60)
+        m = int(minutes_from_start % 60)
+        return f"{h:02d}:{m:02d}"
 
-    print(f"\n--- {res['scenario_name']} (Scheduled: {res['total_scheduled_time']:.0f} mins) ---")
-    if res['status'] != "Optimal":
-        print(f"  No optimal solution found (Status: {res['status']}).")
+    def get_day_num(day_str):
+        # Assumes format "Day_X" -> returns int X
+        return int(day_str.split('_')[1])
+
+    print("\n\n" + "="*90)
+    print(f"{'OPTIMIZATION DEBUG REPORT':^90}")
+    print("="*90)
+    
+    res = results
+    print(f"Scenario:    {res['scenario_name']}")
+    print(f"Status:      {res['status']}")
+    print(f"Runtime:     {res['runtime_sec']:.4f} sec")
+    print(f"Iterations:  {res['total_iterations']}")
+    print(f"Columns Gen: {res['total_columns_generated']}")
+    print(f"Objective:   {res['total_scheduled_time']:.0f} total patient minutes")
+    print("-" * 90)
+
+    if res['status'] != "Optimal" and res['status'] != "Feasible":
+        print(f"X Optimization failed with status: {res['status']}")
         return
         
     if not res['selected_schedules']:
-        print("  No schedules were selected in the final plan.")
+        print("WARNING: No schedules were selected in the final plan.")
         return
 
     schedules_by_day = {day: [] for day in res['all_days']}
     for sched in res['selected_schedules']:
-        day = sched.day
-        if day not in schedules_by_day:
-             schedules_by_day[day] = []
-        schedules_by_day[day].append(sched)
+        schedules_by_day[sched.day].append(sched)
+
+    print(f"{'DAILY SCHEDULE BREAKDOWN':^90}")
+    print("="*90)
+
+    total_surgeries_count = 0
+
+    for day in res['all_days']:
+        day_schedules = schedules_by_day[day]
+        current_day_num = get_day_num(day)
         
-    for day, schedules in schedules_by_day.items():
-        if not schedules:
+        print(f"\nDay: {day}")
+        print("-" * 90)
+
+        if not day_schedules:
+            print("   [No Operational Rooms Scheduled]")
             continue
-        print(f"  ORs for {day}:")
-        for i, sched in enumerate(schedules):
-            print(f"    - OR {i+1}: Surgeries {sched.surgeries} ({sched.B_j} min) [ID: {sched.id}]")
+
+        day_schedules.sort(key=lambda x: x.id)
+
+        for i, sched in enumerate(day_schedules):
+            util_pct = (sched.B_j / 480) * 100
+            print(f"   OR #{i+1} | ID: {sched.id} | Load: {sched.B_j}m ({util_pct:.1f}%)")
+            
+            sorted_surgeries = sorted(
+                sched.surgeries_data, 
+                key=lambda s: sched.start_times.get(s.id, 0)
+            )
+
+            # Header with Deadline (DL) and Status
+            print(f"   {'TIME':<13} | {'ID':<3} | {'SURGEON':<10} | {'INF':<3} | {'DL':<3} | {'STATUS':<6} | {'DUR':<5}")
+            print("   " + "."*65)
+
+            for s in sorted_surgeries:
+                start_min = sched.start_times.get(s.id, 0)
+                end_min = start_min + s.duration
+                time_str = f"{fmt_time(start_min)} - {fmt_time(end_min)}"
+                
+                # Determine Status based on Deadline vs Current Day
+                # Logic: If deadline matches current day, it's Mandatory (due now).
+                # Otherwise (scheduled earlier than deadline), it's Optional.
+                if s.deadline == current_day_num:
+                    status_str = "MAND"
+                elif s.deadline < current_day_num:
+                    status_str = "LATE" # Debugging catch for missed deadlines
+                else:
+                    status_str = "OPT"
+
+                print(f"   {time_str:<13} | {s.id:<3} | {s.surgeon:<10} | {s.infection_type:<3} | {s.deadline:<3} | {status_str:<6} | {s.duration}m")
+                total_surgeries_count += 1
+            
+            work_summary = ", ".join([f"{k}: {v}m" for k,v in sched.surgeon_work.items()])
+            print(f"   [Debug] Room Surgeon Totals: {work_summary}")
+            print("")
+
+    print("="*90)
+    print(f"Total Surgeries Scheduled: {total_surgeries_count}")
+    print("="*90 + "\n")
                 
 
 if __name__ == "__main__":
@@ -362,9 +443,10 @@ if __name__ == "__main__":
     random.seed(42) # Set seed for reproducible results
 
     # --- Configuration ---
-    NUM_SURGERIES = 10
+    NUM_SURGERIES = 40
     NUM_SURGEONS = 5
     NUM_DAYS = 10
+    NUM_ORS = 3
     
     # --- Constants ---
     OBLIGATORY_CLEANING_TIME = 30
@@ -376,7 +458,8 @@ if __name__ == "__main__":
     all_days = [f"Day_{i+1}" for i in range(NUM_DAYS)]
     DAY_MAP = {day: i+1 for i, day in enumerate(all_days)}
     
-    K_d = {day: NUM_SURGEONS for day in all_days}
+    # --- OR capacities ---
+    K_d = {day: NUM_ORS for day in all_days}
 
     # How many minutes each surgeon can work each day
     A_ld = {(surg, day): 480 for surg in all_surgeons for day in all_days}

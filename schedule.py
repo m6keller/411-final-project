@@ -1,62 +1,38 @@
 from typing import Dict, List, Tuple, Literal
 from pydantic import BaseModel
 
-# Operational hours are from 9 AM to 5 PM (9 to 16)
-Operational_time = Literal[9, 10, 11, 12, 13, 14, 15, 16]
-
-# Priority levels for surgeries 0 (optional) and 1 (mandatory)
-Priority = Literal[0, 1]
-
 class Surgery(BaseModel):
-    # Unique identifier for the surgery
     id: int
-    # Surgeon assigned to this surgery
     surgeon: str
-    # Duration of the surgery in minutes
-    duration: int
-    # Priority level of the surgery 
-    priority: Priority
-    # Day by which surgery must be completed
-    deadline: int
-    # Type of infection (0 for none)
-    infection_type: int
+    duration: int              # Duration in minutes
+    deadline: int              # Day index
+    infection_type: int        # 0=None, >0=Specific Type
 
 class Schedule(BaseModel):
-    # Unique identifier for the schedule 
     id: str
-    # Total "profit" or total minutes of surgeries scheduled in this block (Eq. 5)
-    B_j: int
-    # Day of the week (e.g., "Mon", "Tue")
+    B_j: int                                       # Total duration/profit (Eq. 5)
     day: str
-    # List of surgeries (Surgery class) included in this schedule
-    surgeries: List[int]
-    # List of surgeries (Surgery class) included in this schedule
-    surgeries_data: List[Surgery]
-    # Mapping: surgeon → total minutes they work in this schedule (Eq. 5 data)
-        # Example: {"Dr_A": 120, "Dr_B": 120}
-    surgeon_work: Dict[str, int]
-     # Mapping: (surgeon, day, time_slot) → 1 if surgeon is busy, else absent
-        # Used for Eq. (6) constraints in scheduling optimization
-        # Example key: ("Dr_A", "Mon", 9)
-        # Represents that Dr_A is busy at 9 AM on Monday
-    surgeon_busy_times: Dict[Tuple[str, str, int], int]
-
+    surgeries: List[int]                           # Surgery IDs (for Solver)
+    surgeries_data: List[Surgery]                  # Full objects (for Reporting)
+    surgeon_work: Dict[str, int]                   # {Surgeon: Total Minutes}
+    surgeon_busy_times: Dict[Tuple[str, int], int] # {(Surgeon, Time): 60} (Eq. 6 Coloring)
+    start_times: Dict[int, int]                    # {Surgery ID: Start Minute (0-480)}
 
 # Example usage:
-if __name__ == "__main__":  
-    surgery1 = Surgery(id=1, surgeon="Dr_A", duration=120, priority=1, deadline=1, infection_type=0)
-    surgery2 = Surgery(id=2, surgeon="Dr_B", duration=90, priority=0, deadline=2, infection_type=1)
+if __name__ == "__main__":
+    s1 = Surgery(id=1, surgeon="Dr_A", duration=120, deadline=1, infection_type=0)
+    s2 = Surgery(id=2, surgeon="Dr_B", duration=90, deadline=2, infection_type=1)
 
     schedule = Schedule(
         id="sched_001",
         B_j=210,
         day="Mon",
-        surgeries=[surgery1.id, surgery2.id],
+        surgeries=[s1.id, s2.id],
+        surgeries_data=[s1, s2],
         surgeon_work={"Dr_A": 120, "Dr_B": 90},
-        surgeon_busy_times={("Dr_A", "Mon", 9): 1, ("Dr_B", "Mon", 11): 1},
-        surgeries_data =[surgery1, surgery2]
+        surgeon_busy_times={("Dr_A", 0): 120, ("Dr_B", 120): 90},
+        start_times={1: 0, 2: 120}
     )
 
-    print(schedule)
-    print(schedule.surgeries_data)
-
+    print(f"Schedule Cost: {schedule.B_j}")
+    print(f"First Surgery Start: {schedule.start_times[s1.id]}")
