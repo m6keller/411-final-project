@@ -2,8 +2,6 @@ import pulp
 import random
 from ortools.sat.python import cp_model
 
-# --- 1. FAKE DATA (Updated with deadline and infection info) ---
-
 # Infection Type: 0 = Non-infectious, 1 = Type A, 2 = Type B
 # Deadline: Day number (1-indexed)
 ALL_SURGERIES_DATA = {
@@ -13,9 +11,9 @@ ALL_SURGERIES_DATA = {
     104: {"duration": 60,  "surgeon": "Dr_A", "deadline": 5, "infection_type": 2},
     105: {"duration": 180, "surgeon": "Dr_B", "deadline": 5, "infection_type": 0},
 }
-# Obligatory Cleaning Time (in minutes) 
-OCT = 30
 
+# Obligatory Cleaning Time (in minutes) 
+OBLIGATORY_CLEANING_TIME = 30
 
 # --- FAKE Problem Parameters ---
 MANDATORY_SURGERIES = [101, 102, 103]
@@ -31,9 +29,8 @@ A_ld = {
     ("Dr_A", "Tue"): 480, ("Dr_B", "Tue"): 480,
 }
 # Use the same simplified times for the overlap constraint
-SIMPLIFIED_TIMES = list(range(0, 480, 30))
+SIMPLIFIED_TIMES = list(range(0, 480, OBLIGATORY_CLEANING_TIME))
 
-# --- 2. MASTER PROBLEM FUNCTION (Unchanged) ---
 def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                     all_surgeons, all_days, all_times, K_d, A_ld):
     """
@@ -90,8 +87,6 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                 
     return prob
 
-# --- 3. HELPER FUNCTIONS (Unchanged) ---
-
 def get_initial_schedules():
     """
     Creates one or more simple schedules to start the algorithm.
@@ -122,8 +117,6 @@ def extract_dual_prices(prob):
         dual_prices[name] = c.pi
     return dual_prices
 
-# --- 4. REAL SUBPROBLEM IMPLEMENTATION (Updated) ---
-
 def solve_subproblem(
     day, 
     dual_prices, 
@@ -138,19 +131,16 @@ def solve_subproblem(
     """
     print(f"  ...Solving REAL Subproblem for {day}...")
     
-    # --- 1. PREPROCESSING & LOOKUP TABLE CREATION ---
     SCALING_FACTOR = 1000
     day_num = DAY_MAP[day]
     day_duration = all_times[-1] + 1
     
-    # Eq (8): Filter surgeries by deadline 
     valid_surgeries = {
         i: data for i, data in all_surgeries_data.items() 
         if data['deadline'] >= day_num
     }
     valid_surgery_ids = [0] + list(valid_surgeries.keys())
     
-    # Use max_id from *all* surgeries for stable indexing
     max_id = max(all_surgeries_data.keys())
     
     # Create lookup tables for CP-SAT AddElement
@@ -195,13 +185,12 @@ def solve_subproblem(
             inf_i = infection_type_list[i]
             inf_j = infection_type_list[j]
             
-            # Cleaning required if:
-            # 1. Switching from infectious to non-infectious 
+            # Switching from infectious to non-infectious 
             if inf_i > 0 and inf_j == 0:
-                CL_FLAT_LIST[i * (max_id + 1) + j] = OCT
-            # 2. Switching from infectious to different infection type 
+                CL_FLAT_LIST[i * (max_id + 1) + j] = OBLIGATORY_CLEANING_TIME
+            # Switching from infectious to different infection type 
             elif inf_i > 0 and inf_j > 0 and inf_i != inf_j:
-                CL_FLAT_LIST[i * (max_id + 1) + j] = OCT
+                CL_FLAT_LIST[i * (max_id + 1) + j] = OBLIGATORY_CLEANING_TIME
 
     # Populate PI_STAR_FLAT_LIST (Start Time Cost) 
     # Flattened 2D array: index = i * (day_duration + 1) + t
@@ -266,7 +255,7 @@ def solve_subproblem(
 
     # Eq (11): Sequencing constraint (Start time + duration + cleaning) 
     for p in range(num_positions - 1):
-        cl_p = model.NewIntVar(0, OCT, f'CL_{p}')
+        cl_p = model.NewIntVar(0, OBLIGATORY_CLEANING_TIME, f'CL_{p}')
         # Flattened 2D lookup: CL_FLAT_LIST[W[p]][W[p+1]]
         idx_var = model.NewIntVar(0, cl_list_size, f'cl_idx_{p}')
         model.Add(idx_var == W[p] * (max_id + 1) + W[p+1])
