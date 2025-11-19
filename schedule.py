@@ -12,8 +12,6 @@ Operational_time = Literal[9, 10, 11, 12, 13, 14, 15, 16]
 # Priority levels for surgeries 0 (optional) and 1 (mandatory)
 Priority = Literal[0, 1]
 
-# Operating Rooms available
-Operating_Room = Literal["OR_1", "OR_2", "OR_3"]
 
 class Surgery:
     def __init__(
