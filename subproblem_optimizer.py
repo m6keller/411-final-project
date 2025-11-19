@@ -21,14 +21,7 @@ def generate_daily_schedule(
     day_num = DAY_MAP[day]
     day_duration = all_times[-1] + 1
     
-    # 1. Filter Surgeries by Deadline
-    valid_surgeries = {}
-    for i, data in all_surgeries_data.items():
-        surg_obj = data['surgery_object']
-        # Only consider surgeries whose deadline is NOT passed
-        if surg_obj.deadline >= day_num:
-            valid_surgeries[i] = data
-
+    valid_surgeries = all_surgeries_data 
     valid_surgery_ids = [0] + list(valid_surgeries.keys())
     
     if not valid_surgeries:
@@ -47,14 +40,24 @@ def generate_daily_schedule(
         duration_list[i] = surg.duration
         surgeon_list_int[i] = surgeon_map[surg.surgeon]
 
+        # --- NEW: Calculate Lateness Penalty ---
+        # Calculate how many days late this surgery would be if scheduled on 'day'
+        day_num = DAY_MAP[day]
+        lateness = max(0, day_num - surg.deadline)
+        
+        # Penalty Factor: How much we hate lateness. 
+        # e.g., 1000 units of cost per day late. 
+        # This acts like negative profit in the objective.
+        LATENESS_PENALTY = 1000 * lateness
+
         # Calculate G_di (Reduced Cost)
-        pi_i = (
-            dual_prices.get(f"Pi_i_Mandatory_{i}", 0) + 
-            dual_prices.get(f"Pi_i_Optional_{i}", 0)
-        )
+        pi_i = (dual_prices.get(f"Pi_i_Mandatory_{i}", 0) + 
+                dual_prices.get(f"Pi_i_Optional_{i}", 0))
         pi_ld = dual_prices.get(f"Pi_ld_Surgeon_Hours_{surg.surgeon}_{day}", 0)
         
-        G_di = surg.duration - pi_i - (surg.duration * pi_ld)
+        # Subtract the penalty from the "profit" of this column
+        G_di = surg.duration - pi_i - (surg.duration * pi_ld) - LATENESS_PENALTY
+        
         G_di_list[i] = int(G_di * SCALING_FACTOR)
 
     # [cite_start]3. Build Cleaning Matrix [cite: 95-96]
