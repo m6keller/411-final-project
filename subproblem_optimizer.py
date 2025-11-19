@@ -171,7 +171,7 @@ def generate_daily_schedule(
     )
     
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5.0
+    solver.parameters.max_time_in_seconds = 15.0
     status = solver.Solve(model)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
