@@ -71,23 +71,23 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
     return prob
 
 def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, 
-                            K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME):
+                            DAY_MAP, K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME):
     """
-    Constructive Heuristic (Parallel/Bin Packing):
-    Prioritizes opening new ORs (Parallelism) before stacking surgeries (Serialization).
-    Now accounts for OBLIGATORY CLEANING TIME between cases.
+    Constructive Heuristic (Parallel/Bin Packing).
+    Now strictly enforces DEADLINES.
     """
-    print("  Generating Initial Heuristic Schedules (Prioritizing Parallelism)...")
+    print("  Generating Initial Heuristic Schedules (Strict Deadlines)...")
     
-    # 1. Sort Surgeries: Longest duration first
     sorted_surgeries = []
     for s_id in mandatory_surgeries:
         surg_obj = all_surgeries_data[s_id]["surgery_object"]
         sorted_surgeries.append(surg_obj)
     
-    sorted_surgeries.sort(key=lambda s: s.duration, reverse=True)
+    # [cite_start]Sort: Earliest Deadline First (EDF), then Longest Duration [cite: 593-595]
+    # This helps ensure hard-to-fit deadlines get the first slots.
+    sorted_surgeries.sort(key=lambda s: (s.deadline, -s.duration))
 
-    # 2. Trackers
+    # Trackers
     rooms_registry = {day: [] for day in all_days}
     surgeon_availability = {(s, d): [] for s in all_surgeons for d in all_days}
     surgeon_daily_work = {(s, d): 0 for s in all_surgeons for d in all_days}
@@ -100,16 +100,21 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
         for day in all_days:
             if is_scheduled: break
             
+            # --- CRITICAL FIX: Deadline Check ---
+            # If the current day is strictly greater than the deadline, 
+            # we cannot schedule it here.
+            current_day_num = DAY_MAP[day]
+            if current_day_num > surg.deadline:
+                continue
+            
             existing_rooms = rooms_registry[day]
             current_surgeon_work = surgeon_daily_work[(surg.surgeon, day)]
 
-            # STRATEGY A: Try to Open a NEW Room (Prioritize Parallelism)
-            # No cleaning needed for the first surgery of the day
+            # STRATEGY A: Open NEW Room
             if len(existing_rooms) < K_d[day]:
                 start_time = 0
                 end_time = surg.duration
                 
-                # Check Constraints
                 overlap = False
                 for (busy_start, busy_end) in surgeon_availability[(surg.surgeon, day)]:
                      if max(start_time, busy_start) < min(end_time, busy_end):
@@ -133,27 +138,21 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
                     is_scheduled = True
                     break
 
-            # STRATEGY B: Try to Pack into an EXISTING Room (Backfilling)
+            # STRATEGY B: Pack EXISTING Room
             if not is_scheduled:
                 for room in existing_rooms:
-                    # --- NEW LOGIC: Calculate Cleaning Time ---
+                    # Cleaning Logic
                     last_surg = room['surgeries_data'][-1]
                     cleaning_time = 0
-                    
-                    # Check cleaning rules [cite: 95-96]
-                    # 1. Infectious -> Non-Infectious
                     if last_surg.infection_type > 0 and surg.infection_type == 0:
                         cleaning_time = OBLIGATORY_CLEANING_TIME
-                    # 2. Infectious A -> Infectious B (Different types)
                     elif (last_surg.infection_type > 0 and surg.infection_type > 0 
                           and last_surg.infection_type != surg.infection_type):
                         cleaning_time = OBLIGATORY_CLEANING_TIME
                     
-                    # Start time is end of previous + cleaning
                     start_time = room['end_time'] + cleaning_time
                     end_time = start_time + surg.duration
                     
-                    # --- Standard Constraints ---
                     if end_time > 480: continue
                     if current_surgeon_work + surg.duration > A_ld[(surg.surgeon, day)]: continue
 
@@ -164,7 +163,6 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
                             break
                     if overlap: continue
                     
-                    # Add to Room
                     room['surgeries'].append(surg.id)
                     room['surgeries_data'].append(surg)
                     room['end_time'] = end_time
@@ -178,17 +176,14 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
                     break
 
         if not is_scheduled:
-            print(f"WARNING: Could not schedule mandatory surgery {surg.id} in heuristic.")
+            print(f"WARNING: Heuristic failed to schedule surgery {surg.id} (DL: Day {surg.deadline})")
 
-    # 3. Convert to Objects
     for day, rooms in rooms_registry.items():
         for i, room in enumerate(rooms):
-            # B_j is total SURGERY duration (profit), excluding cleaning/idle time [cite: 179-180]
-            total_surgery_duration = sum(room['work_log'].values())
-            
+            total_duration = sum(room['work_log'].values())
             sched_obj = Schedule(
                 id=f"Init_{day}_Room{i+1}",
-                B_j=total_surgery_duration,
+                B_j=total_duration,
                 day=day,
                 surgeries=room['surgeries'],
                 surgeries_data=room['surgeries_data'],
@@ -263,7 +258,7 @@ def run_optimization_scenario(
 
     known_schedules = get_initial_schedules(
         all_surgeries_data, mandatory_surgeries, all_days, 
-        K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME
+        DAY_MAP, K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME
     )
     
     results["total_columns_generated"] = len(known_schedules)
