@@ -135,10 +135,11 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, DAY
                             busy_times[(surg_name, day_name, t_busy)] = 1
                     
                     schedule = Schedule(
-                        schedule_id=f"Initial_Sched_{surg_id}",
+                        id=f"Initial_Sched_{surg_id}",
                         B_j=duration,
                         day=day_name,
                         surgeries=[surg_id],
+                        surgeries_data=[surg_data["surgery_object"]],
                         surgeon_work={surg_name: duration},
                         surgeon_busy_times=busy_times
                     )
@@ -376,7 +377,9 @@ if __name__ == "__main__":
     DAY_MAP = {day: i+1 for i, day in enumerate(all_days)}
     
     K_d = {day: NUM_SURGEONS for day in all_days}
-    A_ld = {(surg, day): 480 for surg in all_surgeons for day in all_days}
+
+    # How many minutes each surgeon can work each day
+    A_ld = {(surg, day): 200 for surg in all_surgeons for day in all_days}
 
     # --- Generate Surgeries ---
     all_surgeries_data = {}
@@ -392,9 +395,9 @@ if __name__ == "__main__":
             "duration": surg.duration,
             "surgeon": surg.surgeon,
             "deadline": surg.deadline,
-            "infection_type": surg.infection_type
+            "infection_type": surg.infection_type,
+            "surgery_object": surg
         }
-        
         if surg.deadline <= NUM_DAYS:
             mandatory_surgeries.append(surg_id)
         else:
