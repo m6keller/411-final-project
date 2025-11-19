@@ -1,12 +1,14 @@
 import random
 from schedule import Surgery
 
-def generate_surgery_data(num_samples, num_days_planning_horizon=5):
+def generate_surgery_data(num_samples, num_days_planning_horizon=5, num_surgeons=4):
     surgeries = []
+    available_surgeons = [f"Surgeon_{chr(65+i)}" for i in range(num_surgeons)]
+    
     for i in range(num_samples):
         duration = random.choice([60, 120, 180])  # Surgery durations in minutes
         priority = random.choice([0, 1])  # Priority levels
-        surgeon = random.choice(["Surgeon_A", "Surgeon_B", "Surgeon_C", "Surgeon_D"])  # Example surgeons
+        surgeon = random.choice(available_surgeons)
         deadline = random.randint(1, num_days_planning_horizon + 2) # Deadlines can be up to 2 days past the planning horizon
         infection_type = random.choice([0, 0, 0, 1, 2]) # Skew towards non-infectious
         
