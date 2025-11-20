@@ -100,12 +100,12 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
         for day in all_days:
             if is_scheduled: break
             
-            # # --- CRITICAL FIX: Deadline Check ---
-            # # If the current day is strictly greater than the deadline, 
-            # # we cannot schedule it here.
-            # current_day_num = DAY_MAP[day]
-            # if current_day_num > surg.deadline:
-            #     continue
+            # --- CRITICAL FIX: Deadline Check ---
+            # If the current day is strictly greater than the deadline, 
+            # we cannot schedule it here.
+            current_day_num = DAY_MAP[day]
+            if current_day_num > surg.deadline:
+                continue
             
             existing_rooms = rooms_registry[day]
             current_surgeon_work = surgeon_daily_work[(surg.surgeon, day)]
@@ -438,7 +438,7 @@ if __name__ == "__main__":
     random.seed(42) # Set seed for reproducible results
 
     # --- Configuration ---
-    NUM_SURGERIES = 20
+    NUM_SURGERIES = 50
     NUM_SURGEONS = 5
     NUM_DAYS = 10
     NUM_ORS = 3

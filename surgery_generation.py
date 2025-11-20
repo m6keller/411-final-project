@@ -8,7 +8,7 @@ def generate_surgery_data(num_samples, num_days_planning_horizon=5, num_surgeons
     for i in range(num_samples):
         duration = random.choice([60, 120, 180])  # Surgery durations in minutes
         surgeon = random.choice(available_surgeons)
-        deadline = random.randint(1, num_days_planning_horizon + 2) # Deadlines can be up to 2 days past the planning horizon
+        deadline = random.randint(1, num_days_planning_horizon) # Deadlines can be up to 2 days past the planning horizon
         infection_type = random.choice([0, 0, 0, 1, 2]) # Skew towards non-infectious
         
         surgery = Surgery(
