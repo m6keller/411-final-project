@@ -214,26 +214,6 @@ def extract_dual_prices(prob):
         dual_prices[name] = c.pi
     return dual_prices
 
-def solve_subproblem(
-    day, 
-    dual_prices, 
-    all_surgeries_data, 
-    all_surgeons,
-    all_times,
-    A_ld,
-    DAY_MAP,
-    OBLIGATORY_CLEANING_TIME,
-    SIMPLIFIED_TIMES
-):
-    """
-    Wrapper for the subproblem solver.
-    """
-    return generate_daily_schedule(
-        day, dual_prices, all_surgeries_data, 
-        all_surgeons, all_times, A_ld, DAY_MAP,
-        OBLIGATORY_CLEANING_TIME, SIMPLIFIED_TIMES
-    )
-
 
 def run_optimization_scenario(
     scenario_name, all_surgeries_data, mandatory_surgeries, optional_surgeries,
