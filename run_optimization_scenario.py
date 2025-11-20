@@ -7,9 +7,7 @@ from schedule import Schedule
 from subproblem_optimizer import generate_daily_schedule
 from surgery_generation import generate_surgery_data
 
-
-# --- Scheduler Core Logic ---
-# --- Configuration ---
+PRINT_MULTIPLIER = 90
 BIG_M = 100000  # Penalty for failing to schedule a mandatory surgery
 
 def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
@@ -363,15 +361,15 @@ def print_results_report(results):
     # Assuming you can modify the call to print_results_report(results, all_surgeries_data)
     # For now, I will simulate the report logic assuming we have the data.
     
-    print("\n\n" + "="*90)
-    print(f"{'OPTIMIZATION DEBUG REPORT':^90}")
-    print("="*90)
+    print("\n\n" + "="*PRINT_MULTIPLIER)
+    print(f"{'OPTIMIZATION DEBUG REPORT':^{PRINT_MULTIPLIER}}")
+    print("="*PRINT_MULTIPLIER + "\n")
     
     res = results
     print(f"Scenario:    {res['scenario_name']}")
     print(f"Status:      {res['status']}")
     print(f"Objective:   {res['total_scheduled_time']:.0f} (Negative = Penalties Applied)")
-    print("-" * 90)
+    print("-" * PRINT_MULTIPLIER)
 
     # --- NEW SECTION: UNSCHEDULED SURGERIES ---
     # You will need to pass 'all_surgeries_data' to this function call in the main block
@@ -380,8 +378,8 @@ def print_results_report(results):
         missing_ids = [i for i in all_data.keys() if i not in scheduled_ids and i != 0]
         
         if missing_ids:
-            print(f"\n{'!!! UNSCHEDULED SURGERIES (The Reason for Negative Score) !!!':^90}")
-            print("-" * 90)
+            print(f"\n{'!!! UNSCHEDULED SURGERIES (The Reason for Negative Score) !!!':^{PRINT_MULTIPLIER}}")
+            print("-" * PRINT_MULTIPLIER)
             print(f"   {'ID':<5} | {'SURGEON':<10} | {'DUR':<5} | {'DEADLINE':<10} | {'REASON HYPOTHESIS'}")
             print("   " + "."*85)
             
@@ -396,7 +394,7 @@ def print_results_report(results):
                     reason = "Capacity/Surgeon Constraints"
                 
                 print(f"   {m_id:<5} | {s_obj.surgeon:<10} | {s_obj.duration:<5} | Day {s_obj.deadline:<5} | {reason}")
-            print("-" * 90)
+            print("-" * PRINT_MULTIPLIER)
             print(f"   * These surgeries could not fit before their deadline.")
     # -------------------------------------------
 
@@ -405,15 +403,15 @@ def print_results_report(results):
         for sched in res['selected_schedules']:
             schedules_by_day[sched.day].append(sched)
 
-    print(f"\n{'DAILY SCHEDULE BREAKDOWN':^90}")
-    print("="*90)
+    print(f"\n{'DAILY SCHEDULE BREAKDOWN':^{PRINT_MULTIPLIER}}")
+    print("="*PRINT_MULTIPLIER)
 
     total_surgeries_count = 0
 
     for day in res['all_days']:
         day_schedules = schedules_by_day[day]
         print(f"\nDay: {day}")
-        print("-" * 90)
+        print("-" * PRINT_MULTIPLIER)
 
         if not day_schedules:
             print("   [No Operational Rooms Scheduled]")
@@ -440,9 +438,9 @@ def print_results_report(results):
                 print(f"   {fmt_time(start_min)} - {fmt_time(end_min)} | {s.id:<3} | {s.surgeon:<10} | {s.deadline:<3} | {s.duration}m")
             print("")
             
-    print("="*90)
+    print("="*PRINT_MULTIPLIER)
     print(f"Total Surgeries Scheduled: {total_surgeries_count}")
-    print("="*90 + "\n")
+    print("="*PRINT_MULTIPLIER + "\n")
          
 
 if __name__ == "__main__":
