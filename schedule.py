@@ -1,98 +1,38 @@
 from typing import Dict, List, Tuple, Literal
+from pydantic import BaseModel
 
-# OR is only open from Monday to Friday
-Day = Literal["Mon", "Tue", "Wed", "Thu", "Fri"]
+class Surgery(BaseModel):
+    id: int
+    surgeon: str
+    duration: int              # Duration in minutes
+    deadline: int              # Day index
+    infection_type: int        # 0=None, >0=Specific Type
 
-# There are 4 surgeons
-Surgeon = Literal["Dr_A", "Dr_B", "Dr_C", "Dr_D"]
-
-# Operational hours are from 9 AM to 5 PM (9 to 16)
-Operational_time = Literal[9, 10, 11, 12, 13, 14, 15, 16]
-
-# Priority levels for surgeries 0 (optional) and 1 (mandatory)
-Priority = Literal[0, 1]
-
-
-class Surgery:
-    def __init__(
-            self, 
-            surgery_id: int, 
-            surgeon: Surgeon,
-            duration: int,
-            priority: Priority,
-            deadline: int,
-            infection_type: int):
-        # Unique identifier for the surgery
-        self.id = surgery_id
-
-        # Surgeon assigned to this surgery
-        self.surgeon = surgeon
-
-        # Duration of the surgery in minutes
-        self.duration = duration
-
-        # Priority level of the surgery 
-        self.priority = priority
-        
-        # Day by which surgery must be completed
-        self.deadline = deadline
-
-        # Type of infection (0 for none)
-        self.infection_type = infection_type
-
-    def __repr__(self):
-        return (f"Surgery(id={self.id}, surgeon={self.surgeon}, duration={self.duration}, "
-                f"priority={self.priority}, deadline={self.deadline}, infection_type={self.infection_type})")
-
-class Schedule:
-    def __init__(
-        self,
-        schedule_id: str,
-        B_j: int,
-        day: Day,
-        surgeries: List[int],
-        surgeon_work: Dict[Surgeon, int],
-        surgeon_busy_times: Dict[Tuple[Surgeon, Day, int], int]
-    ):
-        # Unique identifier for the schedule 
-        self.id = schedule_id
-
-        # Total "profit" or total minutes of surgeries scheduled in this block (Eq. 5)
-        self.B_j = B_j
-
-        # Day of the week (e.g., "Mon", "Tue")
-        self.day = day
-
-        # List of surgery IDs included in this schedule
-        self.surgeries = surgeries
-
-        # Mapping: surgeon → total minutes they work in this schedule (Eq. 5 data)
-        # Example: {"Dr_A": 120, "Dr_B": 120}
-        self.surgeon_work = surgeon_work
-
-        # Mapping: (surgeon, day, time_slot) → 1 if surgeon is busy, else absent
-        # Used for Eq. (6) constraints in scheduling optimization
-        # Example key: ("Dr_A", "Mon", 9)
-        # Represents that Dr_A is busy at 9 AM on Monday
-        self.surgeon_busy_times = surgeon_busy_times
-
-    def __repr__(self):
-        return f"Schedule(id={self.id}, day={self.day}, surgeries={self.surgeries})"
+class Schedule(BaseModel):
+    id: str
+    B_j: int                                       # Total duration/profit (Eq. 5)
+    day: str
+    surgeries: List[int]                           # Surgery IDs (for Solver)
+    surgeries_data: List[Surgery]                  # Full objects (for Reporting)
+    surgeon_work: Dict[str, int]                   # {Surgeon: Total Minutes}
+    surgeon_busy_times: Dict[Tuple[str, int], int] # {(Surgeon, Time): 60} (Eq. 6 Coloring)
+    start_times: Dict[int, int]                    # {Surgery ID: Start Minute (0-480)}
 
 # Example usage:
-if __name__ == "__main__":  
-    surgery1 = Surgery(surgery_id=1, surgeon="Dr_A", duration=120, priority=1, deadline=1, infection_type=0)
-    surgery2 = Surgery(surgery_id=2, surgeon="Dr_B", duration=90, priority=0, deadline=2, infection_type=1)
+if __name__ == "__main__":
+    s1 = Surgery(id=1, surgeon="Dr_A", duration=120, deadline=1, infection_type=0)
+    s2 = Surgery(id=2, surgeon="Dr_B", duration=90, deadline=2, infection_type=1)
 
     schedule = Schedule(
-        schedule_id="sched_001",
+        id="sched_001",
         B_j=210,
         day="Mon",
-        surgeries=[surgery1.id, surgery2.id],
+        surgeries=[s1.id, s2.id],
+        surgeries_data=[s1, s2],
         surgeon_work={"Dr_A": 120, "Dr_B": 90},
-        surgeon_busy_times={("Dr_A", "Mon", 9): 1, ("Dr_B", "Mon", 11): 1}
+        surgeon_busy_times={("Dr_A", 0): 120, ("Dr_B", 120): 90},
+        start_times={1: 0, 2: 120}
     )
 
-    print(schedule)
-    print(schedule.surgeries)
-
+    print(f"Schedule Cost: {schedule.B_j}")
+    print(f"First Surgery Start: {schedule.start_times[s1.id]}")
