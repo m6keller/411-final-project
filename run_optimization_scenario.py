@@ -1,6 +1,7 @@
 import pulp
 import random
 import time
+import concurrent.futures
 
 from schedule import Schedule
 from subproblem_optimizer import generate_daily_schedule
@@ -100,9 +101,6 @@ def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days,
         for day in all_days:
             if is_scheduled: break
             
-            # --- CRITICAL FIX: Deadline Check ---
-            # If the current day is strictly greater than the deadline, 
-            # we cannot schedule it here.
             current_day_num = DAY_MAP[day]
             if current_day_num > surg.deadline:
                 continue
@@ -288,18 +286,40 @@ def run_optimization_scenario(
         dual_prices = extract_dual_prices(master_lp)
         
         new_schedules_found = False
-        for day in all_days:
-            new_schedule, reduced_cost = solve_subproblem(
-                day, dual_prices, all_surgeries_data, 
-                all_surgeons, ALL_TIMES, A_ld, DAY_MAP,
-                OBLIGATORY_CLEANING_TIME, SIMPLIFIED_TIMES
-            )
-            
-            if new_schedule and reduced_cost > 1e-6:
-                new_schedules_found = True
-                if not any(s.id == new_schedule.id for s in known_schedules):
-                    known_schedules.append(new_schedule)
-                        
+
+        # We pack the arguments for each day into a list
+        future_to_day = {}
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for day in all_days:
+                # Submit the job to the pool
+                future = executor.submit(
+                    solve_subproblem,
+                    day, 
+                    dual_prices, 
+                    all_surgeries_data, 
+                    all_surgeons, 
+                    ALL_TIMES, 
+                    A_ld, 
+                    DAY_MAP, 
+                    OBLIGATORY_CLEANING_TIME, 
+                    SIMPLIFIED_TIMES
+                )
+                future_to_day[future] = day
+
+            # Collect results as they finish
+            for future in concurrent.futures.as_completed(future_to_day):
+                day = future_to_day[future]
+                try:
+                    new_schedule, reduced_cost = future.result()
+                    
+                    if new_schedule and reduced_cost > 1e-6:
+                        new_schedules_found = True
+                        # Check if ID exists to avoid duplicates (simple check)
+                        if not any(s.id == new_schedule.id for s in known_schedules):
+                            known_schedules.append(new_schedule)
+                except Exception as e:
+                    print(f"Day {day} generated an exception: {e}")
+        
         if not new_schedules_found:
             print(f"  CONVERGENCE REACHED in {iteration} iterations.")
             break
@@ -440,7 +460,7 @@ if __name__ == "__main__":
     # --- Configuration ---
     NUM_SURGERIES = 50
     NUM_SURGEONS = 5
-    NUM_DAYS = 10
+    NUM_DAYS = 7
     NUM_ORS = 3
     
     # --- Constants ---
