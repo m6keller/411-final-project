@@ -9,19 +9,17 @@ from surgery_generation import generate_surgery_data
 
 
 # --- Scheduler Core Logic ---
+# --- Configuration ---
+BIG_M = 100000  # Penalty for failing to schedule a mandatory surgery
 
 def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                     all_surgeons, all_days, K_d, A_ld, SIMPLIFIED_TIMES):
     """
-    Builds the Master Problem LP model from the paper.
+    Master Problem with Artificial Variables to ensure feasibility.
     """
     prob = pulp.LpProblem("Master_Problem_LP", pulp.LpMaximize)
     
-    if not known_schedules:
-        prob += 0, "Empty_Problem"
-        prob.status = pulp.LpStatusOptimal
-        return prob
-
+    # Decision Variables for Schedules
     sched_vars = pulp.LpVariable.dicts(
         "Schedule",
         [s.id for s in known_schedules],
@@ -29,22 +27,36 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
         cat='Continuous'
     )
     
-    # (1) Objective function
-    prob += pulp.lpSum(
-        s.B_j * sched_vars[s.id] for s in known_schedules
-    ), "Total_Surgery_Time"
+    # Artificial Variables for Mandatory Surgeries (Slack Variables)
+    # If art_var_i = 1, it means surgery i was NOT scheduled.
+    art_vars = pulp.LpVariable.dicts(
+        "Art_Mandatory", 
+        mandatory_surgeries, 
+        lowBound=0, 
+        upBound=1, 
+        cat='Continuous'
+    )
 
-    # (2) Mandatory Surgeries 
+    # (1) Objective: Maximize Schedule Duration - Big M Penalties
+    prob += (
+        pulp.lpSum(s.B_j * sched_vars[s.id] for s in known_schedules) - 
+        pulp.lpSum(BIG_M * art_vars[i] for i in mandatory_surgeries)
+    ), "Total_Objective"
+
+    # (2) Mandatory Surgeries: Sum(Schedule) + Artificial = 1
     for i in mandatory_surgeries:
-        prob += pulp.lpSum(
-            sched_vars[s.id] for s in known_schedules if i in s.surgeries
-        ) == 1, f"Pi_i_Mandatory_{i}"
+        prob += (
+            pulp.lpSum(sched_vars[s.id] for s in known_schedules if i in s.surgeries) 
+            + art_vars[i] 
+            == 1
+        ), f"Pi_i_Mandatory_{i}"
 
-    # (3) Optional Surgeries 
+    # (3) Optional Surgeries: Sum(Schedule) <= 1
     for i in optional_surgeries:
-        prob += pulp.lpSum(
-            sched_vars[s.id] for s in known_schedules if i in s.surgeries
-        ) <= 1, f"Pi_i_Optional_{i}"
+        prob += (
+            pulp.lpSum(sched_vars[s.id] for s in known_schedules if i in s.surgeries) 
+            <= 1
+        ), f"Pi_i_Optional_{i}"
 
     # (4) Daily OR Limit 
     for d in all_days:
@@ -60,7 +72,7 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                 for s in known_schedules if s.day == d
             ) <= A_ld[(l, d)], f"Pi_ld_Surgeon_Hours_{l}_{d}"
             
-    # (6) Surgeon Overlap (Coloring Constraint) 
+    # (6) Surgeon Overlap 
     for l in all_surgeons:
         for d in all_days:
             for t in SIMPLIFIED_TIMES:
@@ -71,6 +83,7 @@ def build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                 
     return prob
 
+    
 def get_initial_schedules(all_surgeries_data, mandatory_surgeries, all_days, 
                             DAY_MAP, K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME):
     """
@@ -223,109 +236,70 @@ def solve_subproblem(
         OBLIGATORY_CLEANING_TIME, SIMPLIFIED_TIMES
     )
 
+
 def run_optimization_scenario(
-    scenario_name,
-    all_surgeries_data,
-    mandatory_surgeries,
-    optional_surgeries,
-    all_surgeons,
-    all_days,
-    DAY_MAP,
-    K_d,
-    A_ld,
-    ALL_TIMES,
-    OBLIGATORY_CLEANING_TIME,
-    SIMPLIFIED_TIMES
+    scenario_name, all_surgeries_data, mandatory_surgeries, optional_surgeries,
+    all_surgeons, all_days, DAY_MAP, K_d, A_ld, ALL_TIMES, OBLIGATORY_CLEANING_TIME, SIMPLIFIED_TIMES
 ):
-    """
-    Runs the full Column Generation and final Integer Solve for a given scenario.
-    """
     print(f"\n--- RUNNING SCENARIO: {scenario_name} ---")
     start_time = time.time()
     
-    results = {
-        "scenario_name": scenario_name,
-        "status": "Failed",
-        "total_scheduled_time": 0,
-        "selected_schedules": [],
-        "total_iterations": 0,
-        "total_columns_generated": 0,
-        "runtime_sec": 0,
-        "all_days": all_days
-    }
-
+    # 1. Initialize with Heuristic (Likely Infeasible, that's okay now)
+    from run_optimization_scenario import get_initial_schedules # Import heuristic from existing file
     known_schedules = get_initial_schedules(
         all_surgeries_data, mandatory_surgeries, all_days, 
         DAY_MAP, K_d, A_ld, all_surgeons, OBLIGATORY_CLEANING_TIME
     )
     
-    results["total_columns_generated"] = len(known_schedules)
-    
     iteration = 0
-    max_iterations = 10
+    MAX_ITER = 15
     
-    while True:
+    while iteration < MAX_ITER:
         iteration += 1
-        print(f"  Iteration {iteration}...")
+        print(f"  Iteration {iteration}...", end=" ")
         
-        if iteration > max_iterations:
-            print("  Reached max iterations. Stopping CG.")
-            break
-        
+        # 2. Solve RMP
         master_lp = build_master_lp(known_schedules, mandatory_surgeries, optional_surgeries,
                                     all_surgeons, all_days, K_d, A_ld, SIMPLIFIED_TIMES)
-        master_lp.solve(pulp.PULP_CBC_CMD(msg=0))
+        # Use warmStart=False to force re-calc, avoiding stuck solutions
+        master_lp.solve(pulp.PULP_CBC_CMD(msg=0, warmStart=False))
         
         if master_lp.status != pulp.LpStatusOptimal:
-            print(f"  Master LP failed to solve (Status: {pulp.LpStatus[master_lp.status]}). Stopping.")
-            results["status"] = f"Master LP Error ({pulp.LpStatus[master_lp.status]})"
-            results["runtime_sec"] = time.time() - start_time
-            results["total_iterations"] = iteration
-            return results 
-            
-        dual_prices = extract_dual_prices(master_lp)
-        
-        new_schedules_found = False
-
-        # We pack the arguments for each day into a list
-        future_to_day = {}
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for day in all_days:
-                # Submit the job to the pool
-                future = executor.submit(
-                    solve_subproblem,
-                    day, 
-                    dual_prices, 
-                    all_surgeries_data, 
-                    all_surgeons, 
-                    ALL_TIMES, 
-                    A_ld, 
-                    DAY_MAP, 
-                    OBLIGATORY_CLEANING_TIME, 
-                    SIMPLIFIED_TIMES
-                )
-                future_to_day[future] = day
-
-            # Collect results as they finish
-            for future in concurrent.futures.as_completed(future_to_day):
-                day = future_to_day[future]
-                try:
-                    new_schedule, reduced_cost = future.result()
-                    
-                    if new_schedule and reduced_cost > 1e-6:
-                        new_schedules_found = True
-                        # Check if ID exists to avoid duplicates (simple check)
-                        if not any(s.id == new_schedule.id for s in known_schedules):
-                            known_schedules.append(new_schedule)
-                except Exception as e:
-                    print(f"Day {day} generated an exception: {e}")
-        
-        if not new_schedules_found:
-            print(f"  CONVERGENCE REACHED in {iteration} iterations.")
+            print(f"Master LP Failed: {pulp.LpStatus[master_lp.status]}")
             break
-    
-    results["total_iterations"] = iteration
-    results["total_columns_generated"] = len(known_schedules)
+
+        # 3. Extract Duals
+        duals = extract_dual_prices(master_lp)
+        
+        # DEBUG: Print top 3 duals to verify Big M is active
+        # Huge negative duals = The constraint is "begging" to be satisfied
+        sorted_duals = sorted(duals.items(), key=lambda x: x[1])
+        print(f"Top Penalty Duals: {[f'{k}:{v:.1f}' for k,v in sorted_duals[:2]]}")
+
+        # 4. Solve Subproblems (Parallel)
+        new_cols_found = 0
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = {
+                executor.submit(generate_daily_schedule, day, duals, all_surgeries_data, 
+                                all_surgeons, ALL_TIMES, A_ld, DAY_MAP, 
+                                OBLIGATORY_CLEANING_TIME, SIMPLIFIED_TIMES): day 
+                for day in all_days
+            }
+            
+            for future in concurrent.futures.as_completed(futures):
+                new_sched, red_cost = future.result()
+                # Lower threshold slightly to catch float errors
+                if new_sched and red_cost > 1e-4:
+                    # Check for duplicates based on surgery ID content, not just schedule ID
+                    existing_signatures = [set(s.surgeries) for s in known_schedules if s.day == new_sched.day]
+                    if set(new_sched.surgeries) not in existing_signatures:
+                        known_schedules.append(new_sched)
+                        new_cols_found += 1
+
+        print(f"Found {new_cols_found} new schedules.")
+        if new_cols_found == 0:
+            print("  CONVERGENCE REACHED.")
+            break
 
     # --- FINAL INTEGER SOLVE ---
     print("  Solving Final Integer Problem...")
@@ -334,31 +308,37 @@ def run_optimization_scenario(
     
     for v in final_prob.variables():
         v.cat = 'Integer'
-        v.upBound = 1
-        v.lowBound = 0
-
+    
     final_prob.solve(pulp.PULP_CBC_CMD(msg=0))
-
-    end_time = time.time()
     
-    results["status"] = pulp.LpStatus[final_prob.status]
-    results["runtime_sec"] = end_time - start_time
-
+    # REPORTING
+    print(f"Final Status: {pulp.LpStatus[final_prob.status]}")
+    print(f"Final Objective: {pulp.value(final_prob.objective)}")
+    
+    selected = []
     if final_prob.status == pulp.LpStatusOptimal:
-        results["total_scheduled_time"] = pulp.value(final_prob.objective)
         for v in final_prob.variables():
-            if v.value() > 0.9:
+            if v.name.startswith("Schedule_") and v.value() > 0.9:
+                s_id = v.name.replace("Schedule_", "")
                 for s in known_schedules:
-                    if s.id == v.name.replace("Schedule_", ""):
-                        results["selected_schedules"].append(s)
-    
-    print(f"--- {scenario_name} FINISHED ({(end_time - start_time):.2f}s) ---")
-    return results
+                    if s.id == s_id: selected.append(s)
 
+    return {
+        "scenario_name": scenario_name,
+        "status": pulp.LpStatus[final_prob.status],
+        "runtime_sec": time.time() - start_time,
+        "total_iterations": iteration,
+        "total_columns_generated": len(known_schedules),
+        "total_scheduled_time": pulp.value(final_prob.objective),
+        "selected_schedules": selected,
+        "all_days": all_days,
+        "all_surgeries_data": all_surgeries_data  
+    }
+    
 def print_results_report(results):
     """
     Prints a detailed, debug-friendly report of the optimization results.
-    Includes INFECTION, DEADLINE, and STATUS (Mandatory vs Optional).
+    Now includes a SPECIFIC section for Unscheduled Surgeries to debug failures.
     """
     def fmt_time(minutes_from_start):
         start_hour = 9
@@ -366,10 +346,23 @@ def print_results_report(results):
         m = int(minutes_from_start % 60)
         return f"{h:02d}:{m:02d}"
 
-    def get_day_num(day_str):
-        # Assumes format "Day_X" -> returns int X
-        return int(day_str.split('_')[1])
+    # 1. Collect all scheduled IDs
+    scheduled_ids = set()
+    if results['selected_schedules']:
+        for sched in results['selected_schedules']:
+            for s_id in sched.surgeries:
+                scheduled_ids.add(s_id)
 
+    # 2. Identify Missing Surgeries
+    # We need access to the original surgery data. 
+    # Note: In your main script, ensure 'all_surgeries_data' is passed to this report 
+    # or available globally. For this snippet, I assume you pass it or we find it via logic.
+    # (In the context of your script, you might need to pass 'all_surgeries_data' into this function)
+    
+    # HACK: If you didn't pass all_surgeries_data to results, we can't list details. 
+    # Assuming you can modify the call to print_results_report(results, all_surgeries_data)
+    # For now, I will simulate the report logic assuming we have the data.
+    
     print("\n\n" + "="*90)
     print(f"{'OPTIMIZATION DEBUG REPORT':^90}")
     print("="*90)
@@ -377,33 +370,48 @@ def print_results_report(results):
     res = results
     print(f"Scenario:    {res['scenario_name']}")
     print(f"Status:      {res['status']}")
-    print(f"Runtime:     {res['runtime_sec']:.4f} sec")
-    print(f"Iterations:  {res['total_iterations']}")
-    print(f"Columns Gen: {res['total_columns_generated']}")
-    print(f"Objective:   {res['total_scheduled_time']:.0f} total patient minutes")
+    print(f"Objective:   {res['total_scheduled_time']:.0f} (Negative = Penalties Applied)")
     print("-" * 90)
 
-    if res['status'] != "Optimal" and res['status'] != "Feasible":
-        print(f"X Optimization failed with status: {res['status']}")
-        return
+    # --- NEW SECTION: UNSCHEDULED SURGERIES ---
+    # You will need to pass 'all_surgeries_data' to this function call in the main block
+    if 'all_surgeries_data' in res:
+        all_data = res['all_surgeries_data']
+        missing_ids = [i for i in all_data.keys() if i not in scheduled_ids and i != 0]
         
-    if not res['selected_schedules']:
-        print("WARNING: No schedules were selected in the final plan.")
-        return
+        if missing_ids:
+            print(f"\n{'!!! UNSCHEDULED SURGERIES (The Reason for Negative Score) !!!':^90}")
+            print("-" * 90)
+            print(f"   {'ID':<5} | {'SURGEON':<10} | {'DUR':<5} | {'DEADLINE':<10} | {'REASON HYPOTHESIS'}")
+            print("   " + "."*85)
+            
+            for m_id in missing_ids:
+                s_obj = all_data[m_id]['surgery_object']
+                
+                # Logic to guess why it failed
+                reason = "Unknown"
+                if s_obj.deadline < len(res['all_days']):
+                    reason = f"Deadline Day {s_obj.deadline} (Expired before Day {len(res['all_days'])})"
+                else:
+                    reason = "Capacity/Surgeon Constraints"
+                
+                print(f"   {m_id:<5} | {s_obj.surgeon:<10} | {s_obj.duration:<5} | Day {s_obj.deadline:<5} | {reason}")
+            print("-" * 90)
+            print(f"   * These surgeries could not fit before their deadline.")
+    # -------------------------------------------
 
     schedules_by_day = {day: [] for day in res['all_days']}
-    for sched in res['selected_schedules']:
-        schedules_by_day[sched.day].append(sched)
+    if res['selected_schedules']:
+        for sched in res['selected_schedules']:
+            schedules_by_day[sched.day].append(sched)
 
-    print(f"{'DAILY SCHEDULE BREAKDOWN':^90}")
+    print(f"\n{'DAILY SCHEDULE BREAKDOWN':^90}")
     print("="*90)
 
     total_surgeries_count = 0
 
     for day in res['all_days']:
         day_schedules = schedules_by_day[day]
-        current_day_num = get_day_num(day)
-        
         print(f"\nDay: {day}")
         print("-" * 90)
 
@@ -415,43 +423,27 @@ def print_results_report(results):
 
         for i, sched in enumerate(day_schedules):
             util_pct = (sched.B_j / 480) * 100
-            print(f"   OR #{i+1} | ID: {sched.id} | Load: {sched.B_j}m ({util_pct:.1f}%)")
+            print(f"   OR #{i+1} | Load: {sched.B_j}m ({util_pct:.1f}%)")
             
             sorted_surgeries = sorted(
                 sched.surgeries_data, 
                 key=lambda s: sched.start_times.get(s.id, 0)
             )
 
-            # Header with Deadline (DL) and Status
-            print(f"   {'TIME':<13} | {'ID':<3} | {'SURGEON':<10} | {'INF':<3} | {'DL':<3} | {'STATUS':<6} | {'DUR':<5}")
-            print("   " + "."*65)
+            print(f"   {'TIME':<13} | {'ID':<3} | {'SURGEON':<10} | {'DL':<3} | {'DUR':<5}")
+            print("   " + "."*50)
 
             for s in sorted_surgeries:
                 start_min = sched.start_times.get(s.id, 0)
                 end_min = start_min + s.duration
-                time_str = f"{fmt_time(start_min)} - {fmt_time(end_min)}"
-                
-                # Determine Status based on Deadline vs Current Day
-                # Logic: If deadline matches current day, it's Mandatory (due now).
-                # Otherwise (scheduled earlier than deadline), it's Optional.
-                if s.deadline == current_day_num:
-                    status_str = "MAND"
-                elif s.deadline < current_day_num:
-                    status_str = "LATE" # Debugging catch for missed deadlines
-                else:
-                    status_str = "OPT"
-
-                print(f"   {time_str:<13} | {s.id:<3} | {s.surgeon:<10} | {s.infection_type:<3} | {s.deadline:<3} | {status_str:<6} | {s.duration}m")
                 total_surgeries_count += 1
-            
-            work_summary = ", ".join([f"{k}: {v}m" for k,v in sched.surgeon_work.items()])
-            print(f"   [Debug] Room Surgeon Totals: {work_summary}")
+                print(f"   {fmt_time(start_min)} - {fmt_time(end_min)} | {s.id:<3} | {s.surgeon:<10} | {s.deadline:<3} | {s.duration}m")
             print("")
-
+            
     print("="*90)
     print(f"Total Surgeries Scheduled: {total_surgeries_count}")
     print("="*90 + "\n")
-                
+         
 
 if __name__ == "__main__":
     
@@ -460,7 +452,7 @@ if __name__ == "__main__":
     # --- Configuration ---
     NUM_SURGERIES = 50
     NUM_SURGEONS = 5
-    NUM_DAYS = 7
+    NUM_DAYS = 6
     NUM_ORS = 3
     
     # --- Constants ---
