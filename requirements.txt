@@ -1,4 +1,5 @@
 absl-py==2.3.1
+annotated-types==0.7.0
 appnope==0.1.4
 asttokens==3.0.0
 comm==0.2.3
@@ -33,16 +34,19 @@ psutil==7.1.1
 ptyprocess==0.7.0
 PuLP==3.3.0
 pure_eval==0.2.3
+pydantic==2.12.4
+pydantic_core==2.41.5
 Pygments==2.19.2
 pyparsing==3.2.5
 python-dateutil==2.9.0.post0
 pytz==2025.2
 pyzmq==27.1.0
+seaborn==0.13.2
 six==1.17.0
 stack-data==0.6.3
 tornado==6.5.2
 traitlets==5.14.3
+typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.2
 wcwidth==0.2.14
-seaborn==0.13.2
