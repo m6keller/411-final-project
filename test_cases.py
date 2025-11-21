@@ -65,9 +65,9 @@ def main():
     
     # --- Define Experiment Parameters ---
     N_SURGERIES = 50
-    SURGEON_COUNTS = [3, 5, 8]
-    DAY_COUNTS = [5, 6, 7, 8]
-    OR_COUNTS = [3, 5, 8]
+    SURGEON_COUNTS = [3, 4, 5, 6, 7]
+    DAY_COUNTS = [4, 5, 6, 7]
+    OR_COUNTS = [3, 4, 5, 6, 7]
     
     # --- Setup Directories ---
     ANALYSIS_DIR = "analysis"

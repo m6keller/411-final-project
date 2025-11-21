@@ -1,37 +1,101 @@
-scenario_name      , total_surgeries, num_surgeons, num_days, num_ors, successful_surgeries, unscheduled_surgeries_ids               , unscheduled_reason                                                    , runtime_sec       , optimization_status
-surg_3_days_5_ors_3,              50,            3,        5,       3,                   48, "[46, 47]"                              , Not selected by optimizer (due to resource constraints or optionality), 1.1109671592712402, Optimal
-surg_3_days_5_ors_5,              50,            3,        5,       5,                   40, "[34, 6, 7, 42, 43, 12, 45, 46, 15, 23]", Not selected by optimizer (due to resource constraints or optionality), 1.0185399055480957, Optimal
-surg_3_days_5_ors_8,              50,            3,        5,       8,                   42, "[35, 36, 42, 11, 44, 13, 47, 19]"      , Not selected by optimizer (due to resource constraints or optionality), 1.0047171115875244, Optimal
-surg_3_days_6_ors_3,              50,            3,        6,       3,                   49, [24]                                    , Not selected by optimizer (due to resource constraints or optionality), 1.0739243030548096, Optimal
-surg_3_days_6_ors_5,              50,            3,        6,       5,                   43, "[35, 38, 41, 14, 22, 23, 28]"          , Not selected by optimizer (due to resource constraints or optionality), 1.0593578815460205, Optimal
-surg_3_days_6_ors_8,              50,            3,        6,       8,                   43, "[34, 41, 44, 13, 16, 30, 31]"          , Not selected by optimizer (due to resource constraints or optionality), 1.0712759494781494, Optimal
-surg_3_days_7_ors_3,              50,            3,        7,       3,                   47, "[32, 25, 42]"                          , Not selected by optimizer (due to resource constraints or optionality), 1.19569993019104  , Optimal
-surg_3_days_7_ors_5,              50,            3,        7,       5,                   48, "[42, 37]"                              , Not selected by optimizer (due to resource constraints or optionality), 1.1868009567260742, Optimal
-surg_3_days_7_ors_8,              50,            3,        7,       8,                   50, []                                      , N/A                                                                   , 1.1840300559997559, Optimal
-surg_3_days_8_ors_3,              50,            3,        8,       3,                   49, [7]                                     , Not selected by optimizer (due to resource constraints or optionality), 1.3396999835968018, Optimal
-surg_3_days_8_ors_5,              50,            3,        8,       5,                   47, "[32, 49, 20]"                          , Not selected by optimizer (due to resource constraints or optionality), 1.3292973041534424, Optimal
-surg_3_days_8_ors_8,              50,            3,        8,       8,                   48, "[36, 21]"                              , Not selected by optimizer (due to resource constraints or optionality), 1.3063890933990479, Optimal
-surg_5_days_5_ors_3,              50,            5,        5,       3,                   48, "[48, 43]"                              , Not selected by optimizer (due to resource constraints or optionality), 1.007472038269043 , Optimal
-surg_5_days_5_ors_5,              50,            5,        5,       5,                   47, "[49, 39, 15]"                          , Not selected by optimizer (due to resource constraints or optionality), 1.0177059173583984, Optimal
-surg_5_days_5_ors_8,              50,            5,        5,       8,                   47, "[49, 47, 23]"                          , Not selected by optimizer (due to resource constraints or optionality), 1.0095131397247314, Optimal
-surg_5_days_6_ors_3,              50,            5,        6,       3,                   49, [47]                                    , Not selected by optimizer (due to resource constraints or optionality), 1.055840253829956 , Optimal
-surg_5_days_6_ors_5,              50,            5,        6,       5,                   50, []                                      , N/A                                                                   , 1.0660758018493652, Optimal
-surg_5_days_6_ors_8,              50,            5,        6,       8,                   48, "[34, 6]"                               , Not selected by optimizer (due to resource constraints or optionality), 1.0848047733306885, Optimal
-surg_5_days_7_ors_3,              50,            5,        7,       3,                   50, []                                      , N/A                                                                   , 1.1925737857818604, Optimal
-surg_5_days_7_ors_5,              50,            5,        7,       5,                   50, []                                      , N/A                                                                   , 1.1924681663513184, Optimal
-surg_5_days_7_ors_8,              50,            5,        7,       8,                   49, [33]                                    , Not selected by optimizer (due to resource constraints or optionality), 1.210493803024292 , Optimal
-surg_5_days_8_ors_3,              50,            5,        8,       3,                   50, []                                      , N/A                                                                   , 1.3969511985778809, Optimal
-surg_5_days_8_ors_5,              50,            5,        8,       5,                   50, []                                      , N/A                                                                   , 1.321925163269043 , Optimal
-surg_5_days_8_ors_8,              50,            5,        8,       8,                   49, [28]                                    , Not selected by optimizer (due to resource constraints or optionality), 1.3413631916046143, Optimal
-surg_8_days_5_ors_3,              50,            8,        5,       3,                   48, "[35, 36]"                              , Not selected by optimizer (due to resource constraints or optionality), 1.0240440368652344, Optimal
-surg_8_days_5_ors_5,              50,            8,        5,       5,                   50, []                                      , N/A                                                                   , 1.0235381126403809, Optimal
-surg_8_days_5_ors_8,              50,            8,        5,       8,                   50, []                                      , N/A                                                                   , 1.0229837894439697, Optimal
-surg_8_days_6_ors_3,              50,            8,        6,       3,                   50, []                                      , N/A                                                                   , 1.0539920330047607, Optimal
-surg_8_days_6_ors_5,              50,            8,        6,       5,                   50, []                                      , N/A                                                                   , 1.0649950504302979, Optimal
-surg_8_days_6_ors_8,              50,            8,        6,       8,                   50, []                                      , N/A                                                                   , 1.060190200805664 , Optimal
-surg_8_days_7_ors_3,              50,            8,        7,       3,                   50, []                                      , N/A                                                                   , 1.2102501392364502, Optimal
-surg_8_days_7_ors_5,              50,            8,        7,       5,                   50, []                                      , N/A                                                                   , 1.4246621131896973, Optimal
-surg_8_days_7_ors_8,              50,            8,        7,       8,                   50, []                                      , N/A                                                                   , 1.2170491218566895, Optimal
-surg_8_days_8_ors_3,              50,            8,        8,       3,                   50, []                                      , N/A                                                                   , 1.3248257637023926, Optimal
-surg_8_days_8_ors_5,              50,            8,        8,       5,                   50, []                                      , N/A                                                                   , 1.3305878639221191, Optimal
-surg_8_days_8_ors_8,              50,            8,        8,       8,                   50, []                                      , N/A                                                                   , 1.447540044784546 , Optimal
+scenario_name,total_surgeries,num_surgeons,num_days,num_ors,successful_surgeries,unscheduled_surgeries_ids,unscheduled_reason,runtime_sec,optimization_status
+surg_3_days_4_ors_3,50,3,4,3,33,"[1, 35, 4, 36, 37, 40, 41, 42, 43, 13, 14, 15, 48, 20, 21, 26, 30]",Not selected by optimizer (due to resource constraints or optionality),1.0533790588378906,Optimal
+surg_3_days_4_ors_4,50,3,4,4,34,"[32, 33, 2, 38, 39, 41, 10, 43, 45, 48, 49, 21, 22, 25, 27, 31]",Not selected by optimizer (due to resource constraints or optionality),1.0559160709381104,Optimal
+surg_3_days_4_ors_5,50,3,4,5,40,"[32, 3, 35, 45, 14, 15, 49, 19, 30, 31]",Not selected by optimizer (due to resource constraints or optionality),0.9578418731689453,Optimal
+surg_3_days_4_ors_6,50,3,4,6,38,"[2, 36, 43, 13, 46, 15, 16, 47, 49, 20, 22, 28]",Not selected by optimizer (due to resource constraints or optionality),0.9725208282470703,Optimal
+surg_3_days_4_ors_7,50,3,4,7,38,"[32, 5, 37, 40, 9, 10, 41, 42, 45, 48, 49, 20]",Not selected by optimizer (due to resource constraints or optionality),1.1468939781188965,Optimal
+surg_3_days_5_ors_3,50,3,5,3,42,"[37, 41, 43, 12, 17, 19, 21, 27]",Not selected by optimizer (due to resource constraints or optionality),1.0330440998077393,Optimal
+surg_3_days_5_ors_4,50,3,5,4,48,"[9, 4]",Not selected by optimizer (due to resource constraints or optionality),0.9840881824493408,Optimal
+surg_3_days_5_ors_5,50,3,5,5,47,"[1, 10, 43]",Not selected by optimizer (due to resource constraints or optionality),0.9912889003753662,Optimal
+surg_3_days_5_ors_6,50,3,5,6,46,"[49, 44, 45, 7]",Not selected by optimizer (due to resource constraints or optionality),0.9679231643676758,Optimal
+surg_3_days_5_ors_7,50,3,5,7,46,"[1, 42, 44, 22]",Not selected by optimizer (due to resource constraints or optionality),0.9820711612701416,Optimal
+surg_3_days_6_ors_3,50,3,6,3,47,"[49, 44, 46]",Not selected by optimizer (due to resource constraints or optionality),1.0436029434204102,Optimal
+surg_3_days_6_ors_4,50,3,6,4,43,"[3, 36, 42, 12, 48, 17, 19]",Not selected by optimizer (due to resource constraints or optionality),1.1601243019104004,Optimal
+surg_3_days_6_ors_5,50,3,6,5,50,[],N/A,1.1940889358520508,Optimal
+surg_3_days_6_ors_6,50,3,6,6,50,[],N/A,1.1835951805114746,Optimal
+surg_3_days_6_ors_7,50,3,6,7,46,"[33, 42, 49, 41]",Not selected by optimizer (due to resource constraints or optionality),1.0303549766540527,Optimal
+surg_3_days_7_ors_3,50,3,7,3,46,"[16, 24, 27, 49]",Not selected by optimizer (due to resource constraints or optionality),1.1457569599151611,Optimal
+surg_3_days_7_ors_4,50,3,7,4,50,[],N/A,1.1758153438568115,Optimal
+surg_3_days_7_ors_5,50,3,7,5,48,"[25, 3]",Not selected by optimizer (due to resource constraints or optionality),1.1235480308532715,Optimal
+surg_3_days_7_ors_6,50,3,7,6,48,"[2, 30]",Not selected by optimizer (due to resource constraints or optionality),1.1408100128173828,Optimal
+surg_3_days_7_ors_7,50,3,7,7,50,[],N/A,1.1595063209533691,Optimal
+surg_4_days_4_ors_3,50,4,4,3,36,"[4, 36, 7, 9, 41, 42, 43, 45, 46, 49, 18, 21, 30, 31]",Not selected by optimizer (due to resource constraints or optionality),0.9628570079803467,Optimal
+surg_4_days_4_ors_4,50,4,4,4,41,"[32, 38, 43, 47, 18, 23, 27, 28, 31]",Not selected by optimizer (due to resource constraints or optionality),0.9890620708465576,Optimal
+surg_4_days_4_ors_5,50,4,4,5,41,"[44, 14, 46, 47, 49, 22, 23, 25, 29]",Not selected by optimizer (due to resource constraints or optionality),0.9872531890869141,Optimal
+surg_4_days_4_ors_6,50,4,4,6,44,"[4, 6, 13, 14, 15, 31]",Not selected by optimizer (due to resource constraints or optionality),0.9769783020019531,Optimal
+surg_4_days_4_ors_7,50,4,4,7,44,"[32, 38, 43, 45, 48, 23]",Not selected by optimizer (due to resource constraints or optionality),0.9582641124725342,Optimal
+surg_4_days_5_ors_3,50,4,5,3,45,"[7, 11, 20, 22, 25]",Not selected by optimizer (due to resource constraints or optionality),1.0025248527526855,Optimal
+surg_4_days_5_ors_4,50,4,5,4,46,"[19, 20, 45, 46]",Not selected by optimizer (due to resource constraints or optionality),1.0922162532806396,Optimal
+surg_4_days_5_ors_5,50,4,5,5,50,[],N/A,1.0058231353759766,Optimal
+surg_4_days_5_ors_6,50,4,5,6,48,"[49, 12]",Not selected by optimizer (due to resource constraints or optionality),1.0295403003692627,Optimal
+surg_4_days_5_ors_7,50,4,5,7,45,"[36, 38, 13, 47, 19]",Not selected by optimizer (due to resource constraints or optionality),1.0368609428405762,Optimal
+surg_4_days_6_ors_3,50,4,6,3,48,"[24, 44]",Not selected by optimizer (due to resource constraints or optionality),1.0350699424743652,Optimal
+surg_4_days_6_ors_4,50,4,6,4,47,"[49, 42, 44]",Not selected by optimizer (due to resource constraints or optionality),1.060520887374878,Optimal
+surg_4_days_6_ors_5,50,4,6,5,50,[],N/A,1.0233469009399414,Optimal
+surg_4_days_6_ors_6,50,4,6,6,46,"[25, 35, 30, 47]",Not selected by optimizer (due to resource constraints or optionality),1.0421278476715088,Optimal
+surg_4_days_6_ors_7,50,4,6,7,47,"[16, 1, 18]",Not selected by optimizer (due to resource constraints or optionality),1.0336833000183105,Optimal
+surg_4_days_7_ors_3,50,4,7,3,50,[],N/A,1.178764820098877,Optimal
+surg_4_days_7_ors_4,50,4,7,4,50,[],N/A,1.1758577823638916,Optimal
+surg_4_days_7_ors_5,50,4,7,5,50,[],N/A,1.1885511875152588,Optimal
+surg_4_days_7_ors_6,50,4,7,6,50,[],N/A,1.1604158878326416,Optimal
+surg_4_days_7_ors_7,50,4,7,7,50,[],N/A,1.1370759010314941,Optimal
+surg_5_days_4_ors_3,50,5,4,3,41,"[32, 1, 38, 43, 49, 18, 21, 28, 31]",Not selected by optimizer (due to resource constraints or optionality),0.9590978622436523,Optimal
+surg_5_days_4_ors_4,50,5,4,4,43,"[0, 5, 39, 10, 43, 13, 14]",Not selected by optimizer (due to resource constraints or optionality),0.9561128616333008,Optimal
+surg_5_days_4_ors_5,50,5,4,5,46,"[48, 43, 27, 20]",Not selected by optimizer (due to resource constraints or optionality),0.9796950817108154,Optimal
+surg_5_days_4_ors_6,50,5,4,6,47,"[42, 47, 23]",Not selected by optimizer (due to resource constraints or optionality),0.9984409809112549,Optimal
+surg_5_days_4_ors_7,50,5,4,7,48,"[33, 20]",Not selected by optimizer (due to resource constraints or optionality),0.971954345703125,Optimal
+surg_5_days_5_ors_3,50,5,5,3,50,[],N/A,0.9981119632720947,Optimal
+surg_5_days_5_ors_4,50,5,5,4,45,"[5, 40, 43, 11, 47]",Not selected by optimizer (due to resource constraints or optionality),0.9880521297454834,Optimal
+surg_5_days_5_ors_5,50,5,5,5,48,"[49, 13]",Not selected by optimizer (due to resource constraints or optionality),1.001258134841919,Optimal
+surg_5_days_5_ors_6,50,5,5,6,49,[35],Not selected by optimizer (due to resource constraints or optionality),0.9940841197967529,Optimal
+surg_5_days_5_ors_7,50,5,5,7,48,"[0, 47]",Not selected by optimizer (due to resource constraints or optionality),1.0086710453033447,Optimal
+surg_5_days_6_ors_3,50,5,6,3,48,"[19, 44]",Not selected by optimizer (due to resource constraints or optionality),1.0400478839874268,Optimal
+surg_5_days_6_ors_4,50,5,6,4,49,[38],Not selected by optimizer (due to resource constraints or optionality),1.0663702487945557,Optimal
+surg_5_days_6_ors_5,50,5,6,5,47,"[43, 12, 20]",Not selected by optimizer (due to resource constraints or optionality),1.0963640213012695,Optimal
+surg_5_days_6_ors_6,50,5,6,6,50,[],N/A,1.0473811626434326,Optimal
+surg_5_days_6_ors_7,50,5,6,7,50,[],N/A,1.064673662185669,Optimal
+surg_5_days_7_ors_3,50,5,7,3,49,[12],Not selected by optimizer (due to resource constraints or optionality),1.2294902801513672,Optimal
+surg_5_days_7_ors_4,50,5,7,4,50,[],N/A,1.1446409225463867,Optimal
+surg_5_days_7_ors_5,50,5,7,5,50,[],N/A,1.1982097625732422,Optimal
+surg_5_days_7_ors_6,50,5,7,6,50,[],N/A,1.158463954925537,Optimal
+surg_5_days_7_ors_7,50,5,7,7,50,[],N/A,1.1357340812683105,Optimal
+surg_6_days_4_ors_3,50,6,4,3,41,"[39, 40, 9, 41, 42, 12, 44, 19, 23]",Not selected by optimizer (due to resource constraints or optionality),1.0065622329711914,Optimal
+surg_6_days_4_ors_4,50,6,4,4,47,"[25, 34, 39]",Not selected by optimizer (due to resource constraints or optionality),1.002729892730713,Optimal
+surg_6_days_4_ors_5,50,6,4,5,43,"[1, 34, 33, 38, 44, 23, 25]",Not selected by optimizer (due to resource constraints or optionality),1.011932134628296,Optimal
+surg_6_days_4_ors_6,50,6,4,6,43,"[5, 38, 44, 13, 48, 49, 29]",Not selected by optimizer (due to resource constraints or optionality),0.9861431121826172,Optimal
+surg_6_days_4_ors_7,50,6,4,7,48,"[24, 26]",Not selected by optimizer (due to resource constraints or optionality),0.9878339767456055,Optimal
+surg_6_days_5_ors_3,50,6,5,3,42,"[33, 38, 6, 41, 44, 48, 18, 26]",Not selected by optimizer (due to resource constraints or optionality),1.0078837871551514,Optimal
+surg_6_days_5_ors_4,50,6,5,4,49,[47],Not selected by optimizer (due to resource constraints or optionality),1.0210299491882324,Optimal
+surg_6_days_5_ors_5,50,6,5,5,50,[],N/A,1.0307130813598633,Optimal
+surg_6_days_5_ors_6,50,6,5,6,50,[],N/A,1.002561092376709,Optimal
+surg_6_days_5_ors_7,50,6,5,7,48,"[33, 3]",Not selected by optimizer (due to resource constraints or optionality),1.0827479362487793,Optimal
+surg_6_days_6_ors_3,50,6,6,3,50,[],N/A,1.0650317668914795,Optimal
+surg_6_days_6_ors_4,50,6,6,4,49,[13],Not selected by optimizer (due to resource constraints or optionality),1.1078169345855713,Optimal
+surg_6_days_6_ors_5,50,6,6,5,50,[],N/A,1.059319019317627,Optimal
+surg_6_days_6_ors_6,50,6,6,6,50,[],N/A,1.0672941207885742,Optimal
+surg_6_days_6_ors_7,50,6,6,7,50,[],N/A,1.065385103225708,Optimal
+surg_6_days_7_ors_3,50,6,7,3,50,[],N/A,1.1830132007598877,Optimal
+surg_6_days_7_ors_4,50,6,7,4,50,[],N/A,1.1699788570404053,Optimal
+surg_6_days_7_ors_5,50,6,7,5,50,[],N/A,1.1823220252990723,Optimal
+surg_6_days_7_ors_6,50,6,7,6,50,[],N/A,1.1609699726104736,Optimal
+surg_6_days_7_ors_7,50,6,7,7,50,[],N/A,1.186736822128296,Optimal
+surg_7_days_4_ors_3,50,7,4,3,41,"[1, 34, 35, 13, 47, 16, 48, 28, 29]",Not selected by optimizer (due to resource constraints or optionality),1.0130341053009033,Optimal
+surg_7_days_4_ors_4,50,7,4,4,48,"[18, 37]",Not selected by optimizer (due to resource constraints or optionality),1.003767967224121,Optimal
+surg_7_days_4_ors_5,50,7,4,5,45,"[32, 39, 41, 44, 19]",Not selected by optimizer (due to resource constraints or optionality),1.1050608158111572,Optimal
+surg_7_days_4_ors_6,50,7,4,6,49,[12],Not selected by optimizer (due to resource constraints or optionality),1.022392988204956,Optimal
+surg_7_days_4_ors_7,50,7,4,7,44,"[43, 44, 13, 48, 27, 29]",Not selected by optimizer (due to resource constraints or optionality),1.0019090175628662,Optimal
+surg_7_days_5_ors_3,50,7,5,3,49,[23],Not selected by optimizer (due to resource constraints or optionality),1.0286858081817627,Optimal
+surg_7_days_5_ors_4,50,7,5,4,50,[],N/A,1.0169670581817627,Optimal
+surg_7_days_5_ors_5,50,7,5,5,48,"[43, 15]",Not selected by optimizer (due to resource constraints or optionality),1.004868984222412,Optimal
+surg_7_days_5_ors_6,50,7,5,6,46,"[35, 10, 27, 29]",Not selected by optimizer (due to resource constraints or optionality),1.0035440921783447,Optimal
+surg_7_days_5_ors_7,50,7,5,7,50,[],N/A,1.004615068435669,Optimal
+surg_7_days_6_ors_3,50,7,6,3,50,[],N/A,1.0448439121246338,Optimal
+surg_7_days_6_ors_4,50,7,6,4,50,[],N/A,1.0911550521850586,Optimal
+surg_7_days_6_ors_5,50,7,6,5,50,[],N/A,1.041815996170044,Optimal
+surg_7_days_6_ors_6,50,7,6,6,50,[],N/A,1.0285980701446533,Optimal
+surg_7_days_6_ors_7,50,7,6,7,49,[32],Not selected by optimizer (due to resource constraints or optionality),1.0299501419067383,Optimal
+surg_7_days_7_ors_3,50,7,7,3,48,"[13, 38]",Not selected by optimizer (due to resource constraints or optionality),1.1468608379364014,Optimal
+surg_7_days_7_ors_4,50,7,7,4,50,[],N/A,1.2041289806365967,Optimal
+surg_7_days_7_ors_5,50,7,7,5,49,[12],Not selected by optimizer (due to resource constraints or optionality),1.2088408470153809,Optimal
+surg_7_days_7_ors_6,50,7,7,6,49,[24],Not selected by optimizer (due to resource constraints or optionality),1.172098159790039,Optimal
+surg_7_days_7_ors_7,50,7,7,7,50,[],N/A,1.156322956085205,Optimal
