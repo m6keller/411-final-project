@@ -9,6 +9,7 @@ BME 411 Final Project to optimize OR scheduling based on [A constraint-programmi
 ```bash
 python -m venv or-env
 source or-env/bin/activate
+pip install -r requirements.txt
 ```
 
 2. Run code
